@@ -79,10 +79,11 @@ function AddRoleVest(Model,Role){
 export class ProceduralHumanoidAnimator{
   constructor(Root){
     this.Root = Root;
+    this.BaseRootY = Root.position.y;
     this.Time = 0;
     this.Bones = {
-      LeftArm:FindBone(Root,[/left.*upperarm/,/upperarm.*l/,/armupperl/]),
-      RightArm:FindBone(Root,[/right.*upperarm/,/upperarm.*r/,/armupperr/]),
+      LeftArm:FindBone(Root,[/left.*upperarm/,/upperarm.*l/,/armupperl/,/leftarm$/]),
+      RightArm:FindBone(Root,[/right.*upperarm/,/upperarm.*r/,/armupperr/,/rightarm$/]),
       LeftLeg:FindBone(Root,[/left.*upleg/,/left.*thigh/,/upleg.*l/,/thigh.*l/]),
       RightLeg:FindBone(Root,[/right.*upleg/,/right.*thigh/,/upleg.*r/,/thigh.*r/]),
       Spine:FindBone(Root,[/spine/,/chest/,/torso/])
@@ -111,7 +112,7 @@ export class ProceduralHumanoidAnimator{
     this.Rotate(this.Bones.LeftArm,-Swing*0.48,0,0.035);
     this.Rotate(this.Bones.RightArm,Swing*0.48,0,-0.035);
     this.Rotate(this.Bones.Spine,Move*0.035,TurnRate*0.018,-TurnRate*0.012);
-    this.Root.position.y = Math.abs(Math.sin(this.Time*2))*0.012*Move;
+    this.Root.position.y = this.BaseRootY+Math.abs(Math.sin(this.Time*2))*0.012*Move;
     this.Root.updateMatrixWorld(true);
   }
 }

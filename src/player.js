@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {GameConfig} from "./config.js";
+import {LimbContactSystem} from "./animation-contact.js";
 
 function ExpAlpha(Delta,Rate){
   return 1-Math.exp(-Rate*Delta);
@@ -28,6 +29,7 @@ export class PlayerController{
     this.CharacterRoot = new THREE.Group();
     this.Character = null;
     this.Animator = null;
+    this.LimbContact = null;
     this.InteractQueued = false;
     this.FireQueued = false;
     this.Active = false;
@@ -85,6 +87,7 @@ export class PlayerController{
   AttachCharacter(CharacterData,Scene){
     this.Character = CharacterData.Model;
     this.Animator = CharacterData.Animator;
+    this.LimbContact = new LimbContactSystem(this.Character,this.Collision);
     this.CharacterRoot.add(this.Character);
     Scene.add(this.CharacterRoot);
     this.CharacterRoot.position.copy(this.Position);
@@ -176,7 +179,9 @@ export class PlayerController{
 
     this.CharacterRoot.position.copy(this.Position);
     this.CharacterRoot.rotation.y = this.LastFacing;
+    this.LimbContact?.Restore();
     this.Animator?.Update(Delta,this.LastSpeed,THREE.MathUtils.clamp(TurnRate,-4,4));
+    this.LimbContact?.Apply();
 
     const Target = new THREE.Vector3(
       this.Position.x,

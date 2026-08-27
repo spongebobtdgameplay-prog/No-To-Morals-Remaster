@@ -131,6 +131,29 @@ export class CollisionWorld{
     return {Position,Hit:LastHit};
   }
 
+  ResolveSegment(Start,End,Radius=0.06,Filter=null){
+    const Delta = End.clone().sub(Start);
+    let Best = null;
+
+    for(const Collider of this.Colliders){
+      if(!Collider.Enabled || !FiniteBounds(Collider)) continue;
+      if(Filter && !Filter(Collider)) continue;
+      const Hit = SweepExpandedAabb(Start,Delta,Collider,Radius);
+      if(!Hit) continue;
+      if(!Best || Hit.Time < Best.Time){
+        Best = {Time:Hit.Time,Normal:Hit.Normal,Collider};
+      }
+    }
+
+    if(!Best) return {Hit:false,End:End.clone(),Normal:new THREE.Vector3(),Collider:null};
+
+    const Length = Math.max(Delta.length(),0.0001);
+    const SafeTime = Math.max(0,Best.Time-0.006/Length);
+    const SafeEnd = Start.clone().addScaledVector(Delta,SafeTime);
+    SafeEnd.addScaledVector(Best.Normal,0.004);
+    return {Hit:true,End:SafeEnd,Normal:Best.Normal.clone(),Collider:Best.Collider};
+  }
+
   ClipSegment(Start,Desired,Radius=0.12){
     const Delta = Desired.clone().sub(Start);
     const Hit = this.FindSweep(Start,Delta,Radius,true);
