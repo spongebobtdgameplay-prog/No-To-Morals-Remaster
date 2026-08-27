@@ -45,12 +45,12 @@ export class PlayerController{
       if(["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight"].includes(Event.code)){
         this.Keys.add(Event.code);
       }
-      if(Event.code === "Space" && !Event.repeat && this.Active){
-        if(this.Grounded){
-          this.VerticalVelocity = GameConfig.JumpSpeed;
-          this.Grounded = false;
-        }
+
+      if(Event.code === "Space" && !Event.repeat && this.Active && this.Grounded){
+        this.VerticalVelocity = GameConfig.JumpSpeed;
+        this.Grounded = false;
       }
+
       if(Event.code === "KeyE" && !Event.repeat && this.Active) this.InteractQueued = true;
     };
 
@@ -65,10 +65,12 @@ export class PlayerController{
 
     this.OnMouseDown = Event=>{
       if(!this.Active) return;
+
       if(document.pointerLockElement !== this.Canvas){
         this.Canvas.requestPointerLock?.();
         return;
       }
+
       if(Event.button === 0) this.FireQueued = true;
     };
 
@@ -105,17 +107,17 @@ export class PlayerController{
     this.ToolVisual = Tool;
     this.ToolVisual.scale.setScalar(0.82);
     this.CharacterRoot.add(this.ToolVisual);
-    this.UpdateToolVisual();
+    this.UpdateToolVisual(0);
   }
 
   TriggerToolPulse(){
     this.ToolKick = 1;
   }
 
-  UpdateToolVisual(){
+  UpdateToolVisual(Delta){
     if(!this.ToolVisual) return;
 
-    this.ToolKick = Math.max(0,this.ToolKick-0.16);
+    this.ToolKick = Math.max(0,this.ToolKick-Delta*9.5);
 
     if(this.RightHand){
       this.CharacterRoot.updateMatrixWorld(true);
@@ -160,6 +162,7 @@ export class PlayerController{
 
     let ForwardInput = 0;
     let RightInput = 0;
+
     if(this.Keys.has("KeyW")) ForwardInput += 1;
     if(this.Keys.has("KeyS")) ForwardInput -= 1;
     if(this.Keys.has("KeyD")) RightInput += 1;
@@ -195,19 +198,52 @@ export class PlayerController{
     this.LastSpeed = THREE.MathUtils.lerp(this.LastSpeed,Speed,ExpAlpha(Delta,9));
 
     const HorizontalDelta = MoveDirection.clone().multiplyScalar(Speed*Delta);
-    const Result = this.Collision.ResolveMove(this.Position,HorizontalDelta,GameConfig.PlayerRadius);
+    const Result = this.Collision.ResolveMove(
+      this.Position,
+      HorizontalDelta,
+      GameConfig.PlayerRadius,
+      {
+        MinY:this.Position.y+0.04,
+        MaxY:this.Position.y+GameConfig.PlayerColliderHeight
+      }
+    );
+
     this.Position.x = Result.Position.x;
     this.Position.z = Result.Position.z;
 
+    const PreviousFeetY = this.Position.y;
     this.VerticalVelocity -= GameConfig.Gravity*Delta;
-    this.Position.y += this.VerticalVelocity*Delta;
-    if(this.Position.y <= 0){
+    const NextFeetY = PreviousFeetY+this.VerticalVelocity*Delta;
+
+    if(this.VerticalVelocity <= 0){
+      const LandingHeight = this.Collision.FindLandingHeight(
+        this.Position,
+        GameConfig.PlayerRadius*0.72,
+        PreviousFeetY,
+        NextFeetY
+      );
+
+      if(Number.isFinite(LandingHeight)){
+        this.Position.y = LandingHeight;
+        this.VerticalVelocity = 0;
+        this.Grounded = true;
+      }else{
+        this.Position.y = NextFeetY;
+        this.Grounded = false;
+      }
+    }else{
+      this.Position.y = NextFeetY;
+      this.Grounded = false;
+    }
+
+    if(this.Position.y < 0){
       this.Position.y = 0;
       this.VerticalVelocity = 0;
       this.Grounded = true;
     }
 
     let TurnRate = 0;
+
     if(Moving){
       const TargetFacing = Math.atan2(MoveDirection.x,MoveDirection.z);
       const Difference = NormalizeAngle(TargetFacing-this.LastFacing);
@@ -220,24 +256,27 @@ export class PlayerController{
     this.LimbContact?.Restore();
     this.Animator?.Update(Delta,this.LastSpeed,THREE.MathUtils.clamp(TurnRate,-4,4));
     this.LimbContact?.Apply();
-    this.UpdateToolVisual();
+    this.UpdateToolVisual(Delta);
 
     const Target = new THREE.Vector3(
       this.Position.x,
       this.Position.y+GameConfig.CameraHeight,
       this.Position.z
     );
+
     const ViewForward = new THREE.Vector3(
       Math.sin(this.Yaw)*Math.cos(this.Pitch),
       Math.sin(this.Pitch),
       Math.cos(this.Yaw)*Math.cos(this.Pitch)
     ).normalize();
+
     const ViewRight = new THREE.Vector3(Math.cos(this.Yaw),0,-Math.sin(this.Yaw));
+
     const DesiredCamera = Target.clone()
       .addScaledVector(ViewForward,-this.CameraDistance)
       .addScaledVector(ViewRight,GameConfig.CameraShoulder);
-    const SafeCamera = this.Collision.ClipSegment(Target,DesiredCamera,0.14);
 
+    const SafeCamera = this.Collision.ClipSegment(Target,DesiredCamera,0.14);
     this.Camera.position.lerp(SafeCamera,ExpAlpha(Delta,18));
     this.Camera.lookAt(Target.clone().addScaledVector(ViewForward,2));
   }

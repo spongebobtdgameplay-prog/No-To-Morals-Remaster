@@ -50,7 +50,11 @@ export class VaultSystem{
         GameConfig.VaultCellWidth*0.92,
         GameConfig.VaultThickness,
         "VaultDoorColumn",
-        {Id:"VaultColumn-"+Column}
+        {
+          Id:"VaultColumn-"+Column,
+          MinY:0,
+          MaxY:TotalHeight
+        }
       );
 
       const ColumnData = {
@@ -70,6 +74,7 @@ export class VaultSystem{
           ),
           (Column+Row)%2 === 0 ? CellMaterial.clone() : DarkMaterial.clone()
         );
+
         Mesh.position.set(X,StartY+Row*GameConfig.VaultCellHeight,DoorZ);
         Mesh.castShadow = true;
         Mesh.receiveShadow = true;
@@ -98,6 +103,7 @@ export class VaultSystem{
 
   SpawnFragments(Cell,HitPoint){
     const Base = Cell.Mesh.position;
+
     for(let Index=0;Index<3;Index+=1){
       const Size = 0.075+Math.random()*0.085;
       const Fragment = new THREE.Mesh(
@@ -108,6 +114,7 @@ export class VaultSystem{
           metalness:0.7
         })
       );
+
       Fragment.position.copy(Base);
       Fragment.position.x += (Math.random()-0.5)*0.2;
       Fragment.position.y += (Math.random()-0.5)*0.18;
@@ -135,6 +142,7 @@ export class VaultSystem{
   DestroyCell(Cell,HitPoint){
     Cell.Destroyed = true;
     Cell.Mesh.visible = false;
+
     const Column = this.Columns[Cell.Column];
     Column.DestroyedRows.add(Cell.Row);
     this.OpenColumnIfWalkable(Column);
@@ -161,8 +169,10 @@ export class VaultSystem{
     this.AlarmTriggered = true;
 
     const ScratchPosition = new THREE.Vector3();
+
     for(const Cell of this.Cells){
       if(Cell.Destroyed) continue;
+
       const Distance = Cell.Mesh.getWorldPosition(ScratchPosition).distanceTo(HitPoint);
       if(Distance > GameConfig.BreachRadius) continue;
 
@@ -228,15 +238,18 @@ export class VaultSystem{
 
       if((!Open || Index === this.Columns.length) && Start >= 0){
         const Length = Index-Start;
+
         if(Length > BestLength){
           BestLength = Length;
           BestStart = Start;
         }
+
         Start = -1;
       }
     }
 
     if(BestLength < 2) return null;
+
     const Left = this.Columns[BestStart].X;
     const Right = this.Columns[BestStart+BestLength-1].X;
     return (Left+Right)*0.5;
@@ -264,12 +277,14 @@ export class GearSystem{
 
     if(!this.Equipped && Distance < 2.1){
       Ui.SetPrompt("E  TAKE BREACH TOOL");
+
       if(Player.ConsumeInteract()){
         this.Equipped = true;
         if(this.World.GearDisplay) this.World.GearDisplay.visible = false;
         Player.EquipBreachTool(CreateBreachTool());
         Ui.SetObjective("Breach the vault surface.");
       }
+
       return;
     }
 
@@ -293,6 +308,7 @@ export class LootSystem{
   Update(Player,Ui){
     for(const Bag of this.World.Loot){
       if(Bag.userData.Collected) continue;
+
       if(Player.Position.distanceTo(Bag.position) < 1.0){
         Bag.userData.Collected = true;
         Bag.visible = false;
@@ -359,9 +375,16 @@ export class PoliceSystem{
       if(Distance > 0.05){
         Direction.normalize();
         const Move = Direction.clone().multiplyScalar(Unit.Speed*Delta);
-        const Result = this.Collision.ResolveMove(Unit.Root.position,Move,0.33);
+        const Result = this.Collision.ResolveMove(
+          Unit.Root.position,
+          Move,
+          0.33,
+          {MinY:0.04,MaxY:1.68}
+        );
+
         Unit.Root.position.x = Result.Position.x;
         Unit.Root.position.z = Result.Position.z;
+
         const Facing = Math.atan2(Direction.x,Direction.z);
         Unit.Facing = THREE.MathUtils.lerp(Unit.Facing,Facing,1-Math.exp(-10*Delta));
         Unit.Root.rotation.y = Unit.Facing;
@@ -412,6 +435,7 @@ export class GameUi{
 
   SetAlarm(Active,Seconds){
     this.AlarmPanel.classList.toggle("Hidden",!Active);
+
     if(Active){
       this.ResponseText.textContent = Seconds > 0
         ? "RESPONSE WAVE IN "+Seconds.toFixed(1)

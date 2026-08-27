@@ -7,10 +7,23 @@ function Box(Scene,Collision,CenterX,CenterY,CenterZ,Width,Height,Depth,Material
   Mesh.castShadow = Options.CastShadow !== false;
   Mesh.receiveShadow = true;
   Scene.add(Mesh);
+
   let Collider = null;
   if(Collision && Options.Collision !== false){
-    Collider = Collision.AddBox(CenterX,CenterZ,Width,Depth,Type,{CameraBlock:Options.CameraBlock !== false});
+    Collider = Collision.AddBox(
+      CenterX,
+      CenterZ,
+      Width,
+      Depth,
+      Type,
+      {
+        CameraBlock:Options.CameraBlock !== false,
+        MinY:CenterY-Height/2,
+        MaxY:CenterY+Height/2
+      }
+    );
   }
+
   return {Mesh,Collider};
 }
 
