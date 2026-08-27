@@ -1,0 +1,58 @@
+:root{
+  color-scheme:dark;
+  --bg:#07090b;
+  --panel:rgba(10,14,17,.82);
+  --line:rgba(255,255,255,.16);
+  --text:#e9ecef;
+  --muted:#8f9aa3;
+  --amber:#d9a45f;
+  --green:#74e0ab;
+  --alarm:#ff5b62;
+  --cyan:#66d4ff;
+  --mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body,#GameRoot{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg)}
+body{font-family:var(--mono);color:var(--text)}
+#GameCanvas{display:block;width:100%;height:100%;outline:none}
+#Vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 48%,rgba(0,0,0,.52) 100%);z-index:4}
+.Hidden{display:none!important}
+#Hud{position:fixed;inset:0;z-index:10;pointer-events:none;padding:16px;display:flex;flex-direction:column;justify-content:space-between}
+.HudTop,.HudBottom{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.HudBottom{align-items:flex-end}
+.Panel{border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(10px);padding:10px 12px;box-shadow:0 12px 30px rgba(0,0,0,.18)}
+.Panel span{display:block;color:var(--muted);font-size:10px;letter-spacing:.16em;margin-bottom:4px}
+.Panel strong{font-size:13px;letter-spacing:.07em}
+.Brand strong{color:var(--amber)}
+.Objective{min-width:300px;text-align:center}
+.Stats strong{color:var(--green)}
+.Controls{max-width:620px;color:#b4bec5;font-size:10px;line-height:1.5;letter-spacing:.05em}
+.Meter{width:210px}
+.MeterTrack{height:7px;border:1px solid var(--line);background:#11171b;overflow:hidden}
+.MeterFill{height:100%;width:100%;background:linear-gradient(90deg,var(--green),var(--cyan));transition:width .08s linear}
+.Alarm{border-color:rgba(255,91,98,.45)}
+.Alarm span,.Alarm strong{color:var(--alarm)}
+.Crosshair{position:fixed;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%)}
+.Crosshair:before,.Crosshair:after{content:"";position:absolute;background:rgba(255,255,255,.82)}
+.Crosshair:before{left:7px;top:1px;width:2px;height:14px}
+.Crosshair:after{left:1px;top:7px;width:14px;height:2px}
+.InteractPrompt{position:fixed;left:50%;bottom:22%;transform:translateX(-50%);min-width:260px;text-align:center;color:#fff;font-size:12px;letter-spacing:.08em;text-shadow:0 2px 8px #000}
+.Overlay{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at center,rgba(15,20,24,.88),rgba(3,5,7,.98))}
+.StartCard{width:min(620px,calc(100vw - 32px));border:1px solid rgba(255,255,255,.22);background:rgba(13,17,20,.9);padding:34px;box-shadow:0 40px 110px rgba(0,0,0,.5)}
+.Eyebrow{margin:0 0 12px;color:var(--muted);font-size:10px;letter-spacing:.18em}
+.StartCard h1{margin:0;font-size:clamp(44px,9vw,90px);line-height:.82;letter-spacing:-.055em}
+.StartCard h1 span{color:var(--amber)}
+.StartCard h2{margin:0 0 14px;font-size:42px;letter-spacing:.06em;color:var(--green)}
+.Desc{color:#abb4bb;line-height:1.65;font-size:13px}
+button{margin-top:16px;min-height:46px;padding:0 18px;border:1px solid rgba(255,255,255,.45);background:#e7e9eb;color:#090b0d;font:800 12px var(--mono);letter-spacing:.12em;cursor:pointer}
+button:disabled{opacity:.38;cursor:default}
+.StartCard small{display:block;margin-top:12px;color:#77838b;font-size:10px}
+.ErrorPanel{position:fixed;z-index:60;left:16px;bottom:16px;max-width:520px;border:1px solid rgba(255,91,98,.5);background:#1a0f11;color:#ffc1c4;padding:12px;font:12px/1.5 var(--mono)}
+@media(max-width:760px){
+  #Hud{padding:10px}
+  .HudTop,.HudBottom{gap:6px}
+  .Objective{min-width:0;flex:1}
+  .Controls{display:none}
+  .Brand{display:none}
+  .Meter{width:150px}
+}
