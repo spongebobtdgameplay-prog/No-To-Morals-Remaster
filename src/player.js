@@ -30,6 +30,11 @@ export class PlayerController{
     this.Character = null;
     this.Animator = null;
     this.LimbContact = null;
+    this.RightHand = null;
+    this.ToolVisual = null;
+    this.ToolKick = 0;
+    this.ToolWorldPosition = new THREE.Vector3();
+    this.ToolLocalPosition = new THREE.Vector3();
     this.InteractQueued = false;
     this.FireQueued = false;
     this.Active = false;
@@ -87,11 +92,44 @@ export class PlayerController{
   AttachCharacter(CharacterData,Scene){
     this.Character = CharacterData.Model;
     this.Animator = CharacterData.Animator;
+    this.RightHand = CharacterData.RightHand || null;
     this.LimbContact = new LimbContactSystem(this.Character,this.Collision);
     this.CharacterRoot.add(this.Character);
     Scene.add(this.CharacterRoot);
     this.CharacterRoot.position.copy(this.Position);
     this.CharacterRoot.rotation.y = this.LastFacing;
+  }
+
+  EquipBreachTool(Tool){
+    if(this.ToolVisual?.parent) this.ToolVisual.parent.remove(this.ToolVisual);
+    this.ToolVisual = Tool;
+    this.ToolVisual.scale.setScalar(0.82);
+    this.CharacterRoot.add(this.ToolVisual);
+    this.UpdateToolVisual();
+  }
+
+  TriggerToolPulse(){
+    this.ToolKick = 1;
+  }
+
+  UpdateToolVisual(){
+    if(!this.ToolVisual) return;
+
+    this.ToolKick = Math.max(0,this.ToolKick-0.16);
+
+    if(this.RightHand){
+      this.CharacterRoot.updateMatrixWorld(true);
+      this.RightHand.getWorldPosition(this.ToolWorldPosition);
+      this.ToolLocalPosition.copy(this.ToolWorldPosition);
+      this.CharacterRoot.worldToLocal(this.ToolLocalPosition);
+      this.ToolVisual.position.copy(this.ToolLocalPosition);
+      this.ToolVisual.position.y -= 0.04;
+      this.ToolVisual.position.z += 0.14-this.ToolKick*0.055;
+    }else{
+      this.ToolVisual.position.set(0.27,1.05,0.14-this.ToolKick*0.055);
+    }
+
+    this.ToolVisual.rotation.set(-0.04,0,0.08);
   }
 
   SetActive(Value){
@@ -182,6 +220,7 @@ export class PlayerController{
     this.LimbContact?.Restore();
     this.Animator?.Update(Delta,this.LastSpeed,THREE.MathUtils.clamp(TurnRate,-4,4));
     this.LimbContact?.Apply();
+    this.UpdateToolVisual();
 
     const Target = new THREE.Vector3(
       this.Position.x,

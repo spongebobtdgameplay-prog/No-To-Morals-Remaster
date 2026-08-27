@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {GameConfig} from "./config.js";
+import {CreateBreachTool} from "./breach-tool.js";
 
 export class VaultSystem{
   constructor(Scene,Collision){
@@ -7,6 +8,7 @@ export class VaultSystem{
     this.Collision = Collision;
     this.Cells = [];
     this.Columns = [];
+    this.Fragments = [];
     this.CellGroup = new THREE.Group();
     this.Scene.add(this.CellGroup);
     this.LastPulse = -99;
@@ -31,6 +33,7 @@ export class VaultSystem{
       {x:-TotalWidth/2-0.18,y:TotalHeight/2,z:DoorZ,w:0.36,h:TotalHeight,d:0.48},
       {x:TotalWidth/2+0.18,y:TotalHeight/2,z:DoorZ,w:0.36,h:TotalHeight,d:0.48}
     ];
+
     for(const Part of FrameParts){
       const Mesh = new THREE.Mesh(new THREE.BoxGeometry(Part.w,Part.h,Part.d),FrameMaterial);
       Mesh.position.set(Part.x,Part.y,Part.z);
@@ -49,7 +52,13 @@ export class VaultSystem{
         "VaultDoorColumn",
         {Id:"VaultColumn-"+Column}
       );
-      const ColumnData = {Collider,Destroyed:0,Open:false};
+
+      const ColumnData = {
+        Collider,
+        DestroyedRows:new Set(),
+        Open:false,
+        X
+      };
       this.Columns.push(ColumnData);
 
       for(let Row=0;Row<GameConfig.VaultRows;Row+=1){
@@ -61,11 +70,7 @@ export class VaultSystem{
           ),
           (Column+Row)%2 === 0 ? CellMaterial.clone() : DarkMaterial.clone()
         );
-        Mesh.position.set(
-          X,
-          StartY+Row*GameConfig.VaultCellHeight,
-          DoorZ
-        );
+        Mesh.position.set(X,StartY+Row*GameConfig.VaultCellHeight,DoorZ);
         Mesh.castShadow = true;
         Mesh.receiveShadow = true;
         Mesh.userData.VaultCell = true;
@@ -83,6 +88,59 @@ export class VaultSystem{
     this.Scene.add(Wheel);
   }
 
+  OpenColumnIfWalkable(Column){
+    if(Column.Open) return;
+    const RequiredRows = [0,1,2,3];
+    if(!RequiredRows.every(Row=>Column.DestroyedRows.has(Row))) return;
+    Column.Open = true;
+    this.Collision.Remove(Column.Collider);
+  }
+
+  SpawnFragments(Cell,HitPoint){
+    const Base = Cell.Mesh.position;
+    for(let Index=0;Index<3;Index+=1){
+      const Size = 0.075+Math.random()*0.085;
+      const Fragment = new THREE.Mesh(
+        new THREE.BoxGeometry(Size,Size*(0.65+Math.random()*0.6),Size*0.55),
+        new THREE.MeshStandardMaterial({
+          color:Index%2 === 0 ? 0x69737a : 0x30383e,
+          roughness:0.4,
+          metalness:0.7
+        })
+      );
+      Fragment.position.copy(Base);
+      Fragment.position.x += (Math.random()-0.5)*0.2;
+      Fragment.position.y += (Math.random()-0.5)*0.18;
+      Fragment.castShadow = true;
+      this.Scene.add(Fragment);
+
+      const Away = Fragment.position.clone().sub(HitPoint);
+      if(Away.lengthSq() < 0.001) Away.set(Math.random()-0.5,Math.random()*0.4,1);
+      Away.normalize();
+
+      this.Fragments.push({
+        Mesh:Fragment,
+        Velocity:Away.multiplyScalar(1.2+Math.random()*1.6).add(new THREE.Vector3(0,1.1+Math.random(),0)),
+        Spin:new THREE.Vector3(
+          (Math.random()-0.5)*6,
+          (Math.random()-0.5)*6,
+          (Math.random()-0.5)*6
+        ),
+        Age:0,
+        Life:1.15+Math.random()*0.45
+      });
+    }
+  }
+
+  DestroyCell(Cell,HitPoint){
+    Cell.Destroyed = true;
+    Cell.Mesh.visible = false;
+    const Column = this.Columns[Cell.Column];
+    Column.DestroyedRows.add(Cell.Row);
+    this.OpenColumnIfWalkable(Column);
+    this.SpawnFragments(Cell,HitPoint);
+  }
+
   Pulse(Player){
     const Now = performance.now()/1000;
     if(Now-this.LastPulse < GameConfig.BreachCooldown) return {Fired:false};
@@ -90,32 +148,30 @@ export class VaultSystem{
 
     const Ray = Player.GetAimRay();
     const Raycaster = new THREE.Raycaster(Ray.Origin,Ray.Direction,0,25);
-    const Hits = Raycaster.intersectObjects(this.Cells.filter(Cell=>!Cell.Destroyed).map(Cell=>Cell.Mesh),false);
-    if(!Hits.length) return {Fired:true,Hit:false};
+    const Targets = this.Cells.filter(Cell=>!Cell.Destroyed).map(Cell=>Cell.Mesh);
+    const Hits = Raycaster.intersectObjects(Targets,false);
+
+    if(!Hits.length){
+      const End = Ray.Origin.clone().addScaledVector(Ray.Direction,18);
+      this.MakePulseEffect(Ray.Origin,End);
+      return {Fired:true,Hit:false};
+    }
 
     const HitPoint = Hits[0].point;
-    if(!this.AlarmTriggered) this.AlarmTriggered = true;
+    this.AlarmTriggered = true;
 
     const ScratchPosition = new THREE.Vector3();
     for(const Cell of this.Cells){
       if(Cell.Destroyed) continue;
       const Distance = Cell.Mesh.getWorldPosition(ScratchPosition).distanceTo(HitPoint);
       if(Distance > GameConfig.BreachRadius) continue;
+
       const Damage = Distance < GameConfig.BreachRadius*0.38 ? 2 : 1;
       Cell.Integrity -= Damage;
       Cell.Mesh.material.emissive = new THREE.Color(0x6a2e14);
       Cell.Mesh.material.emissiveIntensity = 0.65;
 
-      if(Cell.Integrity <= 0){
-        Cell.Destroyed = true;
-        Cell.Mesh.visible = false;
-        const Column = this.Columns[Cell.Column];
-        Column.Destroyed += 1;
-        if(!Column.Open && Column.Destroyed >= Math.ceil(GameConfig.VaultRows*0.56)){
-          Column.Open = true;
-          this.Collision.Remove(Column.Collider);
-        }
-      }
+      if(Cell.Integrity <= 0) this.DestroyCell(Cell,HitPoint);
     }
 
     this.MakePulseEffect(Ray.Origin,HitPoint);
@@ -127,6 +183,7 @@ export class VaultSystem{
     const Material = new THREE.LineBasicMaterial({color:0x66d4ff,transparent:true,opacity:0.95});
     const Line = new THREE.Line(Geometry,Material);
     this.Scene.add(Line);
+
     setTimeout(()=>{
       this.Scene.remove(Line);
       Geometry.dispose();
@@ -134,17 +191,59 @@ export class VaultSystem{
     },70);
   }
 
-  IsPassable(){
-    let Run = 0;
-    for(const Column of this.Columns){
-      if(Column.Open){
-        Run += 1;
-        if(Run >= 2) return true;
-      }else{
-        Run = 0;
+  Update(Delta){
+    for(let Index=this.Fragments.length-1;Index>=0;Index-=1){
+      const Fragment = this.Fragments[Index];
+      Fragment.Age += Delta;
+      Fragment.Velocity.y -= 5.8*Delta;
+      Fragment.Mesh.position.addScaledVector(Fragment.Velocity,Delta);
+      Fragment.Mesh.rotation.x += Fragment.Spin.x*Delta;
+      Fragment.Mesh.rotation.y += Fragment.Spin.y*Delta;
+      Fragment.Mesh.rotation.z += Fragment.Spin.z*Delta;
+
+      if(Fragment.Mesh.position.y < 0.06){
+        Fragment.Mesh.position.y = 0.06;
+        Fragment.Velocity.y = Math.abs(Fragment.Velocity.y)*0.25;
+        Fragment.Velocity.x *= 0.72;
+        Fragment.Velocity.z *= 0.72;
+      }
+
+      if(Fragment.Age >= Fragment.Life){
+        this.Scene.remove(Fragment.Mesh);
+        Fragment.Mesh.geometry.dispose();
+        Fragment.Mesh.material.dispose();
+        this.Fragments.splice(Index,1);
       }
     }
-    return false;
+  }
+
+  GetPassageX(){
+    let Start = -1;
+    let BestStart = -1;
+    let BestLength = 0;
+
+    for(let Index=0;Index<=this.Columns.length;Index+=1){
+      const Open = Index < this.Columns.length && this.Columns[Index].Open;
+      if(Open && Start < 0) Start = Index;
+
+      if((!Open || Index === this.Columns.length) && Start >= 0){
+        const Length = Index-Start;
+        if(Length > BestLength){
+          BestLength = Length;
+          BestStart = Start;
+        }
+        Start = -1;
+      }
+    }
+
+    if(BestLength < 2) return null;
+    const Left = this.Columns[BestStart].X;
+    const Right = this.Columns[BestStart+BestLength-1].X;
+    return (Left+Right)*0.5;
+  }
+
+  IsPassable(){
+    return Number.isFinite(this.GetPassageX());
   }
 
   RemainingFraction(){
@@ -155,21 +254,33 @@ export class VaultSystem{
 
 export class GearSystem{
   constructor(World){
+    this.World = World;
     this.Position = World.GearPosition.clone();
     this.Equipped = false;
   }
 
   Update(Player,Ui){
     const Distance = Player.Position.distanceTo(this.Position);
+
     if(!this.Equipped && Distance < 2.1){
       Ui.SetPrompt("E  TAKE BREACH TOOL");
       if(Player.ConsumeInteract()){
         this.Equipped = true;
+        if(this.World.GearDisplay) this.World.GearDisplay.visible = false;
+        Player.EquipBreachTool(CreateBreachTool());
         Ui.SetObjective("Breach the vault surface.");
       }
       return;
     }
-    if(!this.Equipped) Player.ConsumeInteract();
+
+    if(!this.Equipped){
+      Player.ConsumeInteract();
+      return;
+    }
+
+    if(Player.Position.z < 1.5){
+      Ui.SetPrompt("LEFT CLICK  BREACH PULSE");
+    }
   }
 }
 
@@ -193,11 +304,12 @@ export class LootSystem{
 }
 
 export class PoliceSystem{
-  constructor(Scene,Collision,Assets,World){
+  constructor(Scene,Collision,Assets,World,Vault){
     this.Scene = Scene;
     this.Collision = Collision;
     this.Assets = Assets;
     this.World = World;
+    this.Vault = Vault;
     this.Units = [];
     this.Deployed = false;
   }
@@ -205,12 +317,14 @@ export class PoliceSystem{
   Deploy(){
     if(this.Deployed) return;
     this.Deployed = true;
+
     for(let Index=0;Index<this.World.PoliceSpawns.length;Index+=1){
       const Character = this.Assets.Create("Police");
       const Root = new THREE.Group();
       Root.add(Character.Model);
       Root.position.copy(this.World.PoliceSpawns[Index]);
       this.Scene.add(Root);
+
       this.Units.push({
         Root,
         Animator:Character.Animator,
@@ -224,19 +338,24 @@ export class PoliceSystem{
     if(Unit.Root.position.z > 12.3 && Player.Position.z < 11.5){
       return new THREE.Vector3(0,0,13.3);
     }
-    if(Unit.Root.position.z > -5.5 && Player.Position.z < -6.2){
-      return new THREE.Vector3(0,0,-5.35);
+
+    if(Unit.Root.position.z > -6.15 && Player.Position.z < -6.2){
+      const PassageX = this.Vault.GetPassageX();
+      return new THREE.Vector3(Number.isFinite(PassageX) ? PassageX : 0,0,-5.35);
     }
+
     return Player.Position.clone();
   }
 
   Update(Delta,Player){
     if(!this.Deployed) return false;
+
     for(const Unit of this.Units){
       const Target = this.RouteTarget(Unit,Player);
       const Direction = Target.sub(Unit.Root.position);
       Direction.y = 0;
       const Distance = Direction.length();
+
       if(Distance > 0.05){
         Direction.normalize();
         const Move = Direction.clone().multiplyScalar(Unit.Speed*Delta);
@@ -248,8 +367,10 @@ export class PoliceSystem{
         Unit.Root.rotation.y = Unit.Facing;
         Unit.Animator.Update(Delta,Unit.Speed,0);
       }
+
       if(Unit.Root.position.distanceTo(Player.Position) < 1.05) return true;
     }
+
     return false;
   }
 }

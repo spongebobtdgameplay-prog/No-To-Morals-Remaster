@@ -28,7 +28,7 @@ const Ui = new GameUi();
 const Vault = new VaultSystem(Scene,Collision);
 const Gear = new GearSystem(World);
 const Loot = new LootSystem(World);
-const Police = new PoliceSystem(Scene,Collision,Assets,World);
+const Police = new PoliceSystem(Scene,Collision,Assets,World,Vault);
 
 let Running = false;
 let Ended = false;
@@ -47,15 +47,18 @@ function UpdateObjective(){
     Ui.SetObjective("Get breach gear.");
     return;
   }
+
   if(!Vault.IsPassable()){
     const Percent = Math.round((1-Vault.RemainingFraction())*100);
-    Ui.SetObjective("Open a path through the vault. "+Percent+"% fractured.");
+    Ui.SetObjective("Open a low passage through the vault. "+Percent+"% fractured.");
     return;
   }
+
   if(Loot.Count < 1){
     Ui.SetObjective("Enter the vault and take loot.");
     return;
   }
+
   Ui.SetObjective("Reach the getaway van.");
 }
 
@@ -109,6 +112,8 @@ function Frame(Now){
   const Delta = Math.min((Now-LastTime)/1000,0.05);
   LastTime = Now;
 
+  Vault.Update(Delta);
+
   if(Running && !Ended){
     Ui.SetPrompt("");
     Player.Update(Delta);
@@ -118,6 +123,8 @@ function Frame(Now){
 
     if(Gear.Equipped && Player.ConsumeFire()){
       const Result = Vault.Pulse(Player);
+      if(Result.Fired) Player.TriggerToolPulse();
+
       if(Result.Hit && Vault.AlarmTriggered && AlarmTime === 0){
         AlarmTime = 0.0001;
       }

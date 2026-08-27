@@ -1,13 +1,13 @@
 {
   "robber": {
-    "url": "https://raw.githubusercontent.com/euuuuuuan/fatal-funnel-public/main/packages/renderer/assets/models/quaternius-men/worker.glb",
+    "url": "https://raw.githubusercontent.com/euuuuuuan/fatal-funnel-public/main/packages/renderer/assets/models/quaternius-men/casual-character.glb",
     "author": "Quaternius",
     "sourcePack": "Ultimate Modular Men Pack",
     "license": "CC0-1.0",
     "mirror": "euuuuuuan/fatal-funnel-public"
   },
   "police": {
-    "url": "https://raw.githubusercontent.com/euuuuuuan/fatal-funnel-public/main/packages/renderer/assets/models/quaternius-men/casual-character.glb",
+    "url": "https://raw.githubusercontent.com/euuuuuuan/fatal-funnel-public/main/packages/renderer/assets/models/quaternius-men/swat.glb",
     "author": "Quaternius",
     "sourcePack": "Ultimate Modular Men Pack",
     "license": "CC0-1.0",

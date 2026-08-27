@@ -66,6 +66,7 @@ function AddRoleVest(Model,Role){
   Vest.position.set(0,1.16,-0.02);
   Vest.castShadow = true;
   Model.add(Vest);
+
   if(Role === "Police"){
     const Badge = new THREE.Mesh(
       new THREE.BoxGeometry(0.07,0.09,0.02),
@@ -107,12 +108,17 @@ export class ProceduralHumanoidAnimator{
     const Move = THREE.MathUtils.clamp(Speed/6.6,0,1);
     const Swing = Math.sin(this.Time)*Move;
     const Lift = Math.max(0,Math.sin(this.Time))*Move;
-    this.Rotate(this.Bones.LeftLeg,Swing*0.58-Lift*0.08,0,0);
-    this.Rotate(this.Bones.RightLeg,-Swing*0.58-Math.max(0,-Math.sin(this.Time))*0.08,0,0);
-    this.Rotate(this.Bones.LeftArm,-Swing*0.48,0,0.035);
-    this.Rotate(this.Bones.RightArm,Swing*0.48,0,-0.035);
-    this.Rotate(this.Bones.Spine,Move*0.035,TurnRate*0.018,-TurnRate*0.012);
-    this.Root.position.y = this.BaseRootY+Math.abs(Math.sin(this.Time*2))*0.012*Move;
+    const OppositeLift = Math.max(0,-Math.sin(this.Time))*Move;
+    const Run = THREE.MathUtils.smoothstep(Speed,4.2,6.6);
+
+    this.Rotate(this.Bones.LeftLeg,Swing*(0.52+Run*0.16)-Lift*0.09,0,-Run*0.012);
+    this.Rotate(this.Bones.RightLeg,-Swing*(0.52+Run*0.16)-OppositeLift*0.09,0,Run*0.012);
+    this.Rotate(this.Bones.LeftArm,-Swing*(0.42+Run*0.15)-Run*0.05,0,0.035);
+    this.Rotate(this.Bones.RightArm,Swing*(0.42+Run*0.15)-Run*0.05,0,-0.035);
+    this.Rotate(this.Bones.Spine,Move*(0.025+Run*0.028),TurnRate*0.018,-TurnRate*0.012);
+
+    const StepBob = Math.abs(Math.sin(this.Time*2));
+    this.Root.position.y = this.BaseRootY+StepBob*(0.008+Run*0.008)*Move;
     this.Root.updateMatrixWorld(true);
   }
 }
@@ -125,7 +131,7 @@ export class CharacterAssets{
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260826-1");
+    const Response = await fetch("assets/models/manifest.json?v=20260826-2");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
     this.Manifest = await Response.json();
     await Promise.all([
@@ -152,9 +158,18 @@ export class CharacterAssets{
     const Model = Source ? SkeletonClone(Source) : BuildFallbackHumanoid(Role);
     NormalizeCharacter(Model);
     AddRoleVest(Model,Role);
+
+    const RightHand = FindBone(Model,[
+      /righthand/,
+      /rightwrist/,
+      /wristr/,
+      /handr/
+    ]);
+
     return {
       Model,
-      Animator:new ProceduralHumanoidAnimator(Model)
+      Animator:new ProceduralHumanoidAnimator(Model),
+      RightHand
     };
   }
 }

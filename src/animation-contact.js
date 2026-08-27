@@ -14,8 +14,8 @@ function FindBone(Root,Patterns){
   return Result;
 }
 
-function Structural(Collider){
-  return /wall|vaultdoor/i.test(String(Collider?.Type || ""));
+function LimbBlocking(Collider){
+  return /wall|vaultdoor|counter|desk/i.test(String(Collider?.Type || ""));
 }
 
 export class LimbContactSystem{
@@ -33,18 +33,31 @@ export class LimbContactSystem{
     this.DesiredQuaternion = new THREE.Quaternion();
     this.LocalQuaternion = new THREE.Quaternion();
 
-    const LeftUpper = FindBone(Root,[/leftupperarm/,/upperarml/,/leftarm$/]);
-    const LeftLower = FindBone(Root,[/leftforearm/,/leftlowerarm/,/lowerarml/,/leftforearm$/]);
-    const LeftHand = FindBone(Root,[/lefthand/,/leftwrist/,/wristl/]);
-    const RightUpper = FindBone(Root,[/rightupperarm/,/upperarmr/,/rightarm$/]);
-    const RightLower = FindBone(Root,[/rightforearm/,/rightlowerarm/,/lowerarmr/,/rightforearm$/]);
-    const RightHand = FindBone(Root,[/righthand/,/rightwrist/,/wristr/]);
+    const LeftUpperArm = FindBone(Root,[/leftupperarm/,/upperarml/,/leftarm$/]);
+    const LeftLowerArm = FindBone(Root,[/leftforearm/,/leftlowerarm/,/lowerarml/,/leftforearm$/]);
+    const LeftHand = FindBone(Root,[/lefthand/,/leftwrist/,/wristl/,/handl/]);
+    const RightUpperArm = FindBone(Root,[/rightupperarm/,/upperarmr/,/rightarm$/]);
+    const RightLowerArm = FindBone(Root,[/rightforearm/,/rightlowerarm/,/lowerarmr/,/rightforearm$/]);
+    const RightHand = FindBone(Root,[/righthand/,/rightwrist/,/wristr/,/handr/]);
+
+    const LeftUpperLeg = FindBone(Root,[/leftupperleg/,/leftupleg/,/leftthigh/,/uplegl/,/thighl/]);
+    const LeftLowerLeg = FindBone(Root,[/leftlowerleg/,/leftshin/,/lowerlegl/,/shinl/,/leftleg$/]);
+    const LeftFoot = FindBone(Root,[/leftfoot/,/footl/]);
+    const RightUpperLeg = FindBone(Root,[/rightupperleg/,/rightupleg/,/rightthigh/,/uplegr/,/thighr/]);
+    const RightLowerLeg = FindBone(Root,[/rightlowerleg/,/rightshin/,/lowerlegr/,/shinr/,/rightleg$/]);
+    const RightFoot = FindBone(Root,[/rightfoot/,/footr/]);
 
     this.Segments = [];
-    if(LeftUpper && LeftLower) this.Segments.push({Joint:LeftUpper,Child:LeftLower,Radius:0.072});
-    if(LeftLower && LeftHand) this.Segments.push({Joint:LeftLower,Child:LeftHand,Radius:0.064});
-    if(RightUpper && RightLower) this.Segments.push({Joint:RightUpper,Child:RightLower,Radius:0.072});
-    if(RightLower && RightHand) this.Segments.push({Joint:RightLower,Child:RightHand,Radius:0.064});
+
+    if(LeftUpperArm && LeftLowerArm) this.Segments.push({Joint:LeftUpperArm,Child:LeftLowerArm,Radius:0.074});
+    if(LeftLowerArm && LeftHand) this.Segments.push({Joint:LeftLowerArm,Child:LeftHand,Radius:0.066});
+    if(RightUpperArm && RightLowerArm) this.Segments.push({Joint:RightUpperArm,Child:RightLowerArm,Radius:0.074});
+    if(RightLowerArm && RightHand) this.Segments.push({Joint:RightLowerArm,Child:RightHand,Radius:0.066});
+
+    if(LeftUpperLeg && LeftLowerLeg) this.Segments.push({Joint:LeftUpperLeg,Child:LeftLowerLeg,Radius:0.095});
+    if(LeftLowerLeg && LeftFoot) this.Segments.push({Joint:LeftLowerLeg,Child:LeftFoot,Radius:0.085});
+    if(RightUpperLeg && RightLowerLeg) this.Segments.push({Joint:RightUpperLeg,Child:RightLowerLeg,Radius:0.095});
+    if(RightLowerLeg && RightFoot) this.Segments.push({Joint:RightLowerLeg,Child:RightFoot,Radius:0.085});
   }
 
   Restore(){
@@ -101,7 +114,7 @@ export class LimbContactSystem{
           this.Start,
           this.End,
           Segment.Radius,
-          Structural
+          LimbBlocking
         );
         if(!Result.Hit) continue;
         if(this.RotateJointToTarget(Segment.Joint,Segment.Child,Result.End)) Changed = true;

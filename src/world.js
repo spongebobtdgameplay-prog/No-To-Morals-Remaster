@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import {CreateBreachTool} from "./breach-tool.js";
 
 function Box(Scene,Collision,CenterX,CenterY,CenterZ,Width,Height,Depth,Material,Type="Solid",Options={}){
   const Mesh = new THREE.Mesh(new THREE.BoxGeometry(Width,Height,Depth),Material);
@@ -19,6 +20,7 @@ export class BankWorld{
     this.Collision = Collision;
     this.Loot = [];
     this.GearPosition = new THREE.Vector3(-9,0,7);
+    this.GearDisplay = null;
     this.VanPosition = new THREE.Vector3(7,0,20);
     this.PoliceSpawns = [
       new THREE.Vector3(-10,0,27),
@@ -89,16 +91,34 @@ export class BankWorld{
     VaultLight.position.set(0,4,-9);
     this.Scene.add(VaultLight);
 
-    const SignMaterial = new THREE.MeshStandardMaterial({color:0x1c2429,emissive:0x123f55,emissiveIntensity:1.2});
-    Box(this.Scene,null,-9,1.7,7,3.8,2.8,0.45,SignMaterial,"Decor",{Collision:false});
+    const GearMetal = new THREE.MeshStandardMaterial({color:0x171d21,roughness:0.62,metalness:0.48});
+    const GearBacking = new THREE.MeshStandardMaterial({color:0x222c32,roughness:0.74,metalness:0.22});
+    const GearGlow = new THREE.MeshStandardMaterial({
+      color:0x66d4ff,
+      emissive:0x1d7398,
+      emissiveIntensity:1.8,
+      roughness:0.3
+    });
+
+    Box(this.Scene,this.Collision,-11.7,1.55,7,0.7,3.1,4.4,GearBacking,"GearLocker");
+    Box(this.Scene,this.Collision,-9,0.48,7,3.5,0.96,0.72,GearMetal,"GearBench");
+    Box(this.Scene,null,-9,2.55,7,3.5,0.12,0.26,GearGlow,"Decor",{Collision:false});
+
     for(let Index=0;Index<3;Index+=1){
-      const Slot = new THREE.Mesh(
-        new THREE.BoxGeometry(0.3,0.75,0.22),
-        new THREE.MeshStandardMaterial({color:0x66d4ff,emissive:0x123c55,emissiveIntensity:1})
-      );
-      Slot.position.set(-9.7+Index*0.7,1.55,7.28);
-      this.Scene.add(Slot);
+      const Rack = new THREE.Mesh(new THREE.BoxGeometry(0.13,1.1,0.18),GearGlow);
+      Rack.position.set(-10+Index,1.55,6.72);
+      this.Scene.add(Rack);
     }
+
+    const GearLight = new THREE.PointLight(0x65d4ff,1.35,8,2);
+    GearLight.position.set(-9,2.8,7.5);
+    this.Scene.add(GearLight);
+
+    this.GearDisplay = CreateBreachTool();
+    this.GearDisplay.position.set(-9,1.15,7);
+    this.GearDisplay.rotation.y = Math.PI/2;
+    this.GearDisplay.scale.setScalar(1.35);
+    this.Scene.add(this.GearDisplay);
 
     const Van = new THREE.Group();
     const VanBody = new THREE.Mesh(
@@ -108,12 +128,14 @@ export class BankWorld{
     VanBody.position.y = 1.2;
     VanBody.castShadow = true;
     Van.add(VanBody);
+
     const Cab = new THREE.Mesh(
       new THREE.BoxGeometry(1.6,1.5,2.05),
       new THREE.MeshStandardMaterial({color:0x304d62,roughness:0.5,metalness:0.25})
     );
     Cab.position.set(2.1,1.05,0);
     Van.add(Cab);
+
     for(const X of [-1.5,1.4]){
       for(const Z of [-1.05,1.05]){
         const Tire = new THREE.Mesh(
@@ -125,6 +147,7 @@ export class BankWorld{
         Van.add(Tire);
       }
     }
+
     Van.position.copy(this.VanPosition);
     Van.rotation.y = Math.PI/2;
     this.Scene.add(Van);
@@ -137,6 +160,7 @@ export class BankWorld{
       );
       Body.position.y = 0.36;
       Body.castShadow = true;
+
       const Band = new THREE.Mesh(
         new THREE.BoxGeometry(0.62,0.1,0.38),
         new THREE.MeshStandardMaterial({color:0x8aa578,roughness:0.8})
