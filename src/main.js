@@ -64,6 +64,7 @@ function UpdateObjective(){
 
 function CheckEscape(){
   if(Loot.Count < 1) return false;
+
   const FlatPlayer = new THREE.Vector2(Player.Position.x,Player.Position.z);
   const FlatVan = new THREE.Vector2(World.VanPosition.x,World.VanPosition.z);
   return FlatPlayer.distanceTo(FlatVan) < 2.7;
@@ -71,23 +72,37 @@ function CheckEscape(){
 
 function Finish(Win){
   if(Ended) return;
+
   Ended = true;
   Running = false;
   Player.SetActive(false);
+
   if(document.pointerLockElement === Canvas) document.exitPointerLock?.();
   Ui.End(Win,Loot.Count);
 }
 
 async function Boot(){
   try{
-    await Assets.Load();
+    Ui.BootStatus.textContent = "Loading character and environment models...";
+
+    await Promise.all([
+      Assets.Load(),
+      World.LoadModels()
+    ]);
+
     const Robber = Assets.Create("Robber");
     Player.AttachCharacter(Robber,Scene);
     Ui.SetReady();
   }catch(Error){
     Ui.Error(Error);
-    const Robber = Assets.Create("Robber");
-    Player.AttachCharacter(Robber,Scene);
+
+    try{
+      const Robber = Assets.Create("Robber");
+      Player.AttachCharacter(Robber,Scene);
+    }catch(CharacterError){
+      Ui.Error(CharacterError);
+    }
+
     Ui.SetReady();
   }
 }
@@ -109,6 +124,7 @@ Canvas.addEventListener("click",()=>{
 
 function Frame(Now){
   requestAnimationFrame(Frame);
+
   const Delta = Math.min((Now-LastTime)/1000,0.05);
   LastTime = Now;
 
@@ -136,14 +152,17 @@ function Frame(Now){
 
     if(AlarmTime > 0){
       AlarmTime += Delta;
+
       const Remaining = Math.max(0,GameConfig.PoliceResponseDelay-AlarmTime);
       Ui.SetAlarm(true,Remaining);
+
       if(AlarmTime >= GameConfig.PoliceResponseDelay) Police.Deploy();
     }else{
       Ui.SetAlarm(false,0);
     }
 
     const Caught = Police.Update(Delta,Player);
+
     if(Caught) Finish(false);
     if(CheckEscape()) Finish(true);
 

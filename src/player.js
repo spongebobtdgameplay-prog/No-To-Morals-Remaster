@@ -31,10 +31,15 @@ export class PlayerController{
     this.Animator = null;
     this.LimbContact = null;
     this.RightHand = null;
+    this.ModelFacingOffset = 0;
     this.ToolVisual = null;
     this.ToolKick = 0;
     this.ToolWorldPosition = new THREE.Vector3();
     this.ToolLocalPosition = new THREE.Vector3();
+    this.MoveForward = new THREE.Vector3();
+    this.MoveRight = new THREE.Vector3();
+    this.MoveDirection = new THREE.Vector3();
+    this.UpVector = new THREE.Vector3(0,1,0);
     this.InteractQueued = false;
     this.FireQueued = false;
     this.Active = false;
@@ -95,11 +100,12 @@ export class PlayerController{
     this.Character = CharacterData.Model;
     this.Animator = CharacterData.Animator;
     this.RightHand = CharacterData.RightHand || null;
+    this.ModelFacingOffset = CharacterData.FacingOffset || 0;
     this.LimbContact = new LimbContactSystem(this.Character,this.Collision);
     this.CharacterRoot.add(this.Character);
     Scene.add(this.CharacterRoot);
     this.CharacterRoot.position.copy(this.Position);
-    this.CharacterRoot.rotation.y = this.LastFacing;
+    this.CharacterRoot.rotation.y = this.LastFacing+this.ModelFacingOffset;
   }
 
   EquipBreachTool(Tool){
@@ -174,14 +180,23 @@ export class PlayerController{
       RightInput /= InputLength;
     }
 
-    const Forward = new THREE.Vector3(Math.sin(this.Yaw),0,Math.cos(this.Yaw));
-    const Right = new THREE.Vector3(Math.cos(this.Yaw),0,-Math.sin(this.Yaw));
-    const MoveDirection = new THREE.Vector3()
-      .addScaledVector(Forward,ForwardInput)
-      .addScaledVector(Right,RightInput);
+    this.Camera.getWorldDirection(this.MoveForward);
+    this.MoveForward.y = 0;
 
-    const Moving = MoveDirection.lengthSq() > 0.0001;
-    if(Moving) MoveDirection.normalize();
+    if(this.MoveForward.lengthSq() < 0.000001){
+      this.MoveForward.set(Math.sin(this.Yaw),0,Math.cos(this.Yaw));
+    }else{
+      this.MoveForward.normalize();
+    }
+
+    this.MoveRight.crossVectors(this.MoveForward,this.UpVector).normalize();
+
+    this.MoveDirection.set(0,0,0)
+      .addScaledVector(this.MoveForward,ForwardInput)
+      .addScaledVector(this.MoveRight,RightInput);
+
+    const Moving = this.MoveDirection.lengthSq() > 0.0001;
+    if(Moving) this.MoveDirection.normalize();
 
     const WantsSprint = (this.Keys.has("ShiftLeft") || this.Keys.has("ShiftRight")) && Moving;
     let Sprinting = WantsSprint && this.Stamina > 0.5;
@@ -195,9 +210,9 @@ export class PlayerController{
     }
 
     const Speed = Moving ? (Sprinting ? GameConfig.SprintSpeed : GameConfig.WalkSpeed) : 0;
-    this.LastSpeed = THREE.MathUtils.lerp(this.LastSpeed,Speed,ExpAlpha(Delta,9));
+    this.LastSpeed = THREE.MathUtils.lerp(this.LastSpeed,Speed,ExpAlpha(Delta,10));
 
-    const HorizontalDelta = MoveDirection.clone().multiplyScalar(Speed*Delta);
+    const HorizontalDelta = this.MoveDirection.clone().multiplyScalar(Speed*Delta);
     const Result = this.Collision.ResolveMove(
       this.Position,
       HorizontalDelta,
@@ -245,14 +260,14 @@ export class PlayerController{
     let TurnRate = 0;
 
     if(Moving){
-      const TargetFacing = Math.atan2(MoveDirection.x,MoveDirection.z);
+      const TargetFacing = Math.atan2(this.MoveDirection.x,this.MoveDirection.z);
       const Difference = NormalizeAngle(TargetFacing-this.LastFacing);
       TurnRate = Difference/Math.max(Delta,0.001);
-      this.LastFacing += Difference*ExpAlpha(Delta,14);
+      this.LastFacing += Difference*ExpAlpha(Delta,16);
     }
 
     this.CharacterRoot.position.copy(this.Position);
-    this.CharacterRoot.rotation.y = this.LastFacing;
+    this.CharacterRoot.rotation.y = this.LastFacing+this.ModelFacingOffset;
     this.LimbContact?.Restore();
     this.Animator?.Update(Delta,this.LastSpeed,THREE.MathUtils.clamp(TurnRate,-4,4));
     this.LimbContact?.Apply();
@@ -277,7 +292,7 @@ export class PlayerController{
       .addScaledVector(ViewRight,GameConfig.CameraShoulder);
 
     const SafeCamera = this.Collision.ClipSegment(Target,DesiredCamera,0.14);
-    this.Camera.position.lerp(SafeCamera,ExpAlpha(Delta,18));
+    this.Camera.position.lerp(SafeCamera,ExpAlpha(Delta,20));
     this.Camera.lookAt(Target.clone().addScaledVector(ViewForward,2));
   }
 }
