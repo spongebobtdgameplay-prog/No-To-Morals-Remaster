@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NO TO MORALS — 3D Bank Heist</title>
+<style>
+  :root{
+    --ink:#07090a;
+    --panel:#0e1412;
+    --line:#1d2a26;
+    --amber:#f2b545;
+    --amber-dim:#7a5a20;
+    --green:#5ee0a0;
+    --alarm:#ff3b3b;
+    --mono: 'Courier New', ui-monospace, Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:var(--ink); overflow:hidden;
+    font-family:var(--mono);
+    color:var(--amber);
+  }
+  #stage{position:fixed; inset:0;}
+  canvas{display:block; outline:none;}
+
+  /* scanline / vignette atmosphere */
+  #atmosphere{
+    position:fixed; inset:0; pointer-events:none; z-index:5;
+    background:
+      radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%);
+    mix-blend-mode:multiply;
+  }
+  #alarmFlash{
+    position:fixed; inset:0; pointer-events:none; z-index:6;
+    background:radial-gradient(ellipse at center, rgba(255,20,20,0) 40%, rgba(255,20,20,0.35) 100%);
+    opacity:0; transition:opacity .15s;
+  }
+  body.alarm #alarmFlash{ animation:pulse 0.6s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:0.15;} 50%{opacity:0.55;} }
+
+  /* HUD */
+  #hud{
+    position:fixed; inset:0; z-index:10; pointer-events:none;
+    padding:18px;
+    display:flex; flex-direction:column; justify-content:space-between;
+  }
+  .hud-row{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .panel{
+    background:rgba(9,13,12,0.72);
+    border:1px solid var(--line);
+    padding:10px 14px;
+    letter-spacing:1px;
+    backdrop-filter: blur(2px);
+  }
+  #title{
+    font-size:13px; color:var(--amber-dim); letter-spacing:4px;
+  }
+  #title b{ color:var(--amber); }
+  #score{ font-size:20px; color:var(--green); margin-top:4px; }
+  #score span{ color:var(--amber-dim); font-size:11px; letter-spacing:2px; display:block; }
+
+  #stealthWrap{ width:220px; }
+  #stealthLabel{ font-size:10px; letter-spacing:3px; color:var(--amber-dim); margin-bottom:6px; display:flex; justify-content:space-between;}
+  #stealthBar{ height:10px; width:100%; background:#111; border:1px solid var(--line); position:relative; overflow:hidden;}
+  #stealthFill{ height:100%; width:0%; background:var(--green); transition:width .1s linear, background .2s;}
+  #alarmTimerWrap{ margin-top:8px; font-size:11px; letter-spacing:2px; color:var(--alarm); display:none;}
+  body.alarm #alarmTimerWrap{ display:block; }
+
+  #bagsWrap{ font-size:11px; color:var(--amber-dim); letter-spacing:2px; margin-top:6px;}
+  #bagsWrap b{ color:var(--amber); }
+
+  #controls{
+    font-size:11px; line-height:1.8; color:var(--amber-dim); letter-spacing:1px;
+    text-align:right;
+  }
+  #controls b{ color:var(--amber); }
+
+  #banner{
+    position:fixed; top:40%; left:50%; transform:translate(-50%,-50%);
+    z-index:11; text-align:center; pointer-events:none;
+    font-size:15px; color:var(--alarm); letter-spacing:4px;
+    text-shadow:0 0 12px rgba(255,59,59,0.7);
+    opacity:0; transition:opacity .3s;
+  }
+  #banner.show{ opacity:1; }
+
+  /* Start / End overlays */
+  .overlay{
+    position:fixed; inset:0; z-index:20;
+    background:rgba(4,6,6,0.92);
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column; text-align:center;
+    padding:20px;
+  }
+  .overlay.hidden{ display:none; }
+  .overlay h1{
+    font-size:38px; letter-spacing:10px; color:var(--amber);
+    margin:0 0 6px 0; font-weight:700;
+  }
+  .overlay h1 span{ color:var(--green); }
+  .overlay .sub{ color:var(--amber-dim); letter-spacing:3px; font-size:12px; margin-bottom:30px;}
+  .overlay p.desc{ max-width:520px; color:#c9b98a; font-size:13px; line-height:1.9; letter-spacing:0.5px; margin-bottom:26px;}
+  .overlay .keys{
+    display:flex; gap:22px; margin-bottom:30px; flex-wrap:wrap; justify-content:center;
+  }
+  .key{
+    border:1px solid var(--line); padding:10px 16px; font-size:11px; color:var(--amber-dim); letter-spacing:1px;
+  }
+  .key b{ color:var(--green); display:block; font-size:15px; margin-bottom:4px; letter-spacing:2px;}
+  button.go{
+    background:var(--amber); color:#101010; border:none;
+    font-family:var(--mono); font-weight:700; letter-spacing:4px;
+    padding:14px 34px; font-size:14px; cursor:pointer;
+    pointer-events:auto;
+  }
+  button.go:hover{ background:#ffd27a; }
+  #endTitle{ font-size:34px; letter-spacing:6px; margin-bottom:10px;}
+  #endTitle.win{ color:var(--green); }
+  #endTitle.lose{ color:var(--alarm); }
+  #endScore{ font-size:16px; color:var(--amber); letter-spacing:2px; margin-bottom:30px;}
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+<div id="atmosphere"></div>
+<div id="alarmFlash"></div>
+
+<div id="hud">
+  <div class="hud-row">
+    <div class="panel">
+      <div id="title">NO TO MORALS // <b>NIGHT SHIFT</b></div>
+      <div id="score"><span>LOOT SECURED</span>$<span id="scoreVal">0</span></div>
+      <div id="bagsWrap">BAGS: <b id="bagsVal">0</b>/<b id="bagsTotal">5</b></div>
+    </div>
+    <div class="panel" id="controls">
+      <b>W/S</b> move&nbsp;&nbsp;<b>A/D</b> turn&nbsp;&nbsp;<b>SHIFT</b> sprint<br>
+      walk near a bag to grab it<br>
+      reach the <b style="color:var(--green)">van</b> to bail out
+    </div>
+  </div>
+  <div class="hud-row" style="align-items:flex-end;">
+    <div class="panel" id="stealthWrap">
+      <div id="stealthLabel"><span>DETECTION</span><span id="stealthPct">0%</span></div>
+      <div id="stealthBar"><div id="stealthFill"></div></div>
+      <div id="alarmTimerWrap">⚠ ALARM — POLICE ETA <span id="alarmTime">30</span>s — GET TO THE VAN</div>
+    </div>
+    <div></div>
+  </div>
+</div>
+
+<div id="banner"></div>
+
+<div class="overlay" id="startOverlay">
+  <h1>NO TO <span>MORALS</span></h1>
+  <div class="sub">A 3D BANK HEIST</div>
+  <p class="desc">
+    You're in. The vault's cracked and five bags of cash are sitting for the taking.
+    Two floor guards and a vault sentry are patrolling — stay out of their sightlines
+    (the amber wedges on the floor). Get spotted and the alarm trips: you'll have
+    30 seconds to reach the getaway van parked out front before the police arrive.
+  </p>
+  <div class="keys">
+    <div class="key"><b>W / S</b>walk forward / back</div>
+    <div class="key"><b>A / D</b>turn left / right</div>
+    <div class="key"><b>SHIFT</b>sprint</div>
+    <div class="key"><b>M</b>mute music/sound</div>
+  </div>
+  <button class="go" id="startBtn">START THE JOB</button>
+</div>
+
+<div class="overlay hidden" id="endOverlay">
+  <div id="endTitle">CAUGHT</div>
+  <div id="endScore">You escaped with $0</div>
+  <button class="go" id="restartBtn">RUN IT BACK</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ---------------------------------------------------------------------
+   BASIC SETUP
+--------------------------------------------------------------------- */
+const stage = document.getElementById('stage');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070a);
+scene.fog = new THREE.Fog(0x05070a, 18, 60);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 200);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+
+window.addEventListener('resize', ()=>{
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ---------------------------------------------------------------------
+   LIGHTING
+--------------------------------------------------------------------- */
+const ambient = new THREE.AmbientLight(0x445566, 0.55);
+scene.add(ambient);
+
+const moon = new THREE.DirectionalLight(0x8fb3ff, 0.35);
+moon.position.set(-20, 30, 10);
+scene.add(moon);
+
+const lobbyLight = new THREE.PointLight(0xffd9a0, 1.1, 40, 2);
+lobbyLight.position.set(0, 7, 6);
+lobbyLight.castShadow = true;
+scene.add(lobbyLight);
+
+const vaultLight = new THREE.PointLight(0xfff2c8, 1.3, 24, 2);
+vaultLight.position.set(0, 6, -9);
+vaultLight.castShadow = true;
+scene.add(vaultLight);
+
+// alarm lights (hidden until triggered)
+const alarmLights = [];
+[[-13,5,-10],[13,5,-10],[-13,5,10],[13,5,10]].forEach(p=>{
+  const l = new THREE.PointLight(0xff2222, 0, 18, 2);
+  l.position.set(p[0],p[1],p[2]);
+  scene.add(l);
+  alarmLights.push(l);
+});
+
+/* ---------------------------------------------------------------------
+   MATERIALS
+--------------------------------------------------------------------- */
+function makeCanvasTexture(draw, w, h, repeatX, repeatY){
+  const c = document.createElement('canvas'); c.width=w; c.height=h;
+  const ctx = c.getContext('2d');
+  draw(ctx,w,h);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeatX||1, repeatY||1);
+  return tex;
+}
+
+function drawMarble(ctx,w,h){
+  ctx.fillStyle = '#43392b'; ctx.fillRect(0,0,w,h);
+  for(let i=0;i<36;i++){
+    ctx.strokeStyle = `rgba(${190+Math.random()*40},${165+Math.random()*30},${115+Math.random()*30},${0.07+Math.random()*0.1})`;
+    ctx.lineWidth = 1+Math.random()*2;
+    ctx.beginPath();
+    let x = Math.random()*w, y=0;
+    ctx.moveTo(x,y);
+    for(let s=0;s<6;s++){ x += (Math.random()-0.5)*90; y += h/6; ctx.lineTo(x,y); }
+    ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(0,0,0,0.22)'; ctx.lineWidth=2;
+  for(let x=0;x<=w;x+=w/4){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke(); }
+  for(let y=0;y<=h;y+=h/4){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke(); }
+}
+
+function drawVaultTile(ctx,w,h){
+  const cols=8, rows=8, cw=w/cols, ch=h/rows;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    ctx.fillStyle = (r+c)%2===0? '#2d2d36':'#27272e';
+    ctx.fillRect(c*cw, r*ch, cw, ch);
+  }
+  ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=2;
+  for(let c=0;c<=cols;c++){ ctx.beginPath(); ctx.moveTo(c*cw,0); ctx.lineTo(c*cw,h); ctx.stroke(); }
+  for(let r=0;r<=rows;r++){ ctx.beginPath(); ctx.moveTo(0,r*ch); ctx.lineTo(w,r*ch); ctx.stroke(); }
+}
+
+function drawPlaster(ctx,w,h){
+  ctx.fillStyle = '#262a2f'; ctx.fillRect(0,0,w,h);
+  for(let i=0;i<1600;i++){
+    const x=Math.random()*w, y=Math.random()*h, b=Math.random()*20-10;
+    ctx.fillStyle = `rgba(${180+b},${185+b},${190+b},${0.02+Math.random()*0.05})`;
+    ctx.fillRect(x,y,1.5,1.5);
+  }
+  ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=3;
+  for(let x=0;x<=w;x+=w/3){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+}
+
+function drawMetal(ctx,w,h){
+  const grad = ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,'#9c8a52'); grad.addColorStop(0.5,'#cdb46e'); grad.addColorStop(1,'#7c6c3e');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,w,h);
+  for(let i=0;i<400;i++){
+    ctx.strokeStyle = `rgba(255,255,255,${Math.random()*0.06})`;
+    const y = Math.random()*h;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y+Math.random()*2-1); ctx.stroke();
+  }
+}
+
+function drawAsphalt(ctx,w,h){
+  ctx.fillStyle = '#111318'; ctx.fillRect(0,0,w,h);
+  for(let i=0;i<3200;i++){
+    const x=Math.random()*w,y=Math.random()*h,v=Math.random()*40;
+    ctx.fillStyle=`rgba(${180+v},${180+v},${190+v},0.05)`;
+    ctx.fillRect(x,y,1,1);
+  }
+}
+
+const marbleTex    = makeCanvasTexture(drawMarble, 512,256, 6,3);
+const vaultTileTex = makeCanvasTexture(drawVaultTile, 512,256, 8,3);
+const plasterTexA  = makeCanvasTexture(drawPlaster, 256,256, 4,2);
+const plasterTexB  = makeCanvasTexture(drawPlaster, 256,256, 4,2);
+const metalTex     = makeCanvasTexture(drawMetal, 256,256, 2,2);
+const metalTexVan  = makeCanvasTexture(drawMetal, 256,256, 3,1.5);
+const asphaltTex   = makeCanvasTexture(drawAsphalt, 512,512, 24,24);
+
+const matFloorLobby = new THREE.MeshStandardMaterial({map:marbleTex, roughness:0.7, metalness:0.05});
+const matFloorVault = new THREE.MeshStandardMaterial({map:vaultTileTex, roughness:0.45, metalness:0.3});
+const matWall  = new THREE.MeshStandardMaterial({map:plasterTexA, roughness:0.95});
+const matWallTrim = new THREE.MeshStandardMaterial({map:plasterTexB, color:0x666d73, roughness:0.9});
+const matVaultDoor = new THREE.MeshStandardMaterial({map:metalTex, metalness:0.85, roughness:0.28});
+const matStreet = new THREE.MeshStandardMaterial({map:asphaltTex, roughness:1});
+
+/* ---------------------------------------------------------------------
+   FLOORS / GROUND
+--------------------------------------------------------------------- */
+const street = new THREE.Mesh(new THREE.PlaneGeometry(80,80), matStreet);
+street.rotation.x = -Math.PI/2;
+street.position.y = -0.01;
+street.receiveShadow = true;
+scene.add(street);
+
+const lobbyFloor = new THREE.Mesh(new THREE.PlaneGeometry(30,16), matFloorLobby);
+lobbyFloor.rotation.x = -Math.PI/2;
+lobbyFloor.position.set(0,0,4);
+lobbyFloor.receiveShadow = true;
+scene.add(lobbyFloor);
+
+const vaultFloor = new THREE.Mesh(new THREE.PlaneGeometry(30,8), matFloorVault);
+vaultFloor.rotation.x = -Math.PI/2;
+vaultFloor.position.set(0,0,-8);
+vaultFloor.receiveShadow = true;
+scene.add(vaultFloor);
+
+/* ---------------------------------------------------------------------
+   WALLS  (collision boxes stored as {minX,maxX,minZ,maxZ})
+--------------------------------------------------------------------- */
+const walls = []; // collision AABBs
+const wallGroup = new THREE.Group();
+scene.add(wallGroup);
+
+function addWallBox(cx, cz, w, d, h=5, mat=matWall){
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(cx, h/2, cz);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  wallGroup.add(mesh);
+  walls.push({minX:cx-w/2, maxX:cx+w/2, minZ:cz-d/2, maxZ:cz+d/2});
+}
+
+const WALL_T = 0.6;
+// outer bank footprint: x -15..15, z -12..12
+// south wall (z=12) split around door gap x -2.2..2.2
+addWallBox(-8.6, 12, 12.8, WALL_T);
+addWallBox(8.6, 12, 12.8, WALL_T);
+// north wall solid
+addWallBox(0, -12, 30, WALL_T);
+// east / west walls
+addWallBox(15, 0, WALL_T, 24.6);
+addWallBox(-15, 0, WALL_T, 24.6);
+// interior wall separating lobby/vault at z=-4, door gap x -2.2..2.2
+addWallBox(-8.6, -4, 12.8, WALL_T, 5, matWallTrim);
+addWallBox(8.6, -4, 12.8, WALL_T, 5, matWallTrim);
+
+// vault door slab (visual, sits in the gap, slightly open)
+const vaultDoor = new THREE.Mesh(new THREE.CylinderGeometry(2.1,2.1,0.25,24), matVaultDoor);
+vaultDoor.rotation.x = Math.PI/2;
+vaultDoor.position.set(3.6, 2.2, -3.9);
+vaultDoor.rotation.y = Math.PI/2.6;
+vaultDoor.castShadow = true;
+scene.add(vaultDoor);
+const vaultWheel = new THREE.Mesh(new THREE.TorusGeometry(0.7,0.09,8,16), new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.3}));
+vaultWheel.position.copy(vaultDoor.position);
+vaultWheel.position.y += 0.13;
+vaultWheel.rotation.y = vaultDoor.rotation.y;
+scene.add(vaultWheel);
+for(let i=0;i<4;i++){
+  const spoke = new THREE.Mesh(new THREE.BoxGeometry(1.3,0.08,0.08), new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.3}));
+  spoke.position.copy(vaultWheel.position);
+  spoke.rotation.y = vaultDoor.rotation.y;
+  spoke.rotation.z = i*Math.PI/4;
+  scene.add(spoke);
+}
+
+// ceiling security camera (decorative, slowly panning)
+const camMount = new THREE.Group();
+const camArm = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.4,8), new THREE.MeshStandardMaterial({color:0x222222}));
+camArm.position.y = -0.2;
+const camBody = new THREE.Mesh(new THREE.BoxGeometry(0.22,0.2,0.4), new THREE.MeshStandardMaterial({color:0x1a1a1a, roughness:0.4}));
+camBody.position.set(0,-0.42,0.1);
+const camLens = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.08,10), new THREE.MeshStandardMaterial({color:0x111111, emissive:0xff2222, emissiveIntensity:0.6}));
+camLens.rotation.x = Math.PI/2; camLens.position.set(0,-0.42,0.32);
+camMount.add(camArm, camBody, camLens);
+camMount.position.set(-9, 4.6, 8);
+scene.add(camMount);
+
+// teller counter (decor + collision) in lobby
+addWallBox(0, 3, 8, 0.8, 1.1, matWallTrim);
+
+// street curb decor line (no collision) - simple markers
+for(let x=-14; x<=14; x+=4){
+  const m = new THREE.Mesh(new THREE.BoxGeometry(1.6,0.1,0.3), new THREE.MeshStandardMaterial({color:0xdddddd, roughness:0.8}));
+  m.position.set(x, 0.05, 15.6);
+  scene.add(m);
+}
+
+/* getaway van (win trigger) — van's forward/back runs along local +X,
+   left/right runs along local Z, so wheel axles must run along Z. */
+const van = new THREE.Group();
+const vanPaint = new THREE.MeshStandardMaterial({map:metalTexVan, color:0x2c3f52, roughness:0.4, metalness:0.55});
+const vanGlass = new THREE.MeshStandardMaterial({color:0x8fd6ff, roughness:0.15, metalness:0.6, transparent:true, opacity:0.55});
+const vanTrim  = new THREE.MeshStandardMaterial({color:0x0d1117, roughness:0.6, metalness:0.3});
+const vanTireMat = new THREE.MeshStandardMaterial({color:0x111111, roughness:0.9});
+const vanHubMat  = new THREE.MeshStandardMaterial({color:0x8c8c8c, metalness:0.7, roughness:0.3});
+
+// one continuous boxy cargo body (classic panel-van silhouette) instead of
+// a floating separate "cab" block, so it actually reads as a van
+const vanCargo = new THREE.Mesh(new THREE.BoxGeometry(3.2,2.0,2.0), vanPaint);
+vanCargo.position.set(-0.5,1.35,0); vanCargo.castShadow = true;
+van.add(vanCargo);
+const vanNose = new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.9), vanPaint);
+vanNose.position.set(1.85,1.1,0); vanNose.castShadow = true;
+van.add(vanNose);
+const vanRoofFillet = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.35,1.9), vanPaint);
+vanRoofFillet.position.set(1.15,1.8,0);
+van.add(vanRoofFillet);
+
+// windshield — slanted glass between the nose and the cargo roofline
+const windshield = new THREE.Mesh(new THREE.BoxGeometry(0.85,0.9,1.82), vanGlass);
+windshield.position.set(1.55,1.55,0);
+windshield.rotation.z = -0.42;
+van.add(windshield);
+// side windows on the cab doors
+const sideWindow = new THREE.Mesh(new THREE.BoxGeometry(0.75,0.5,0.06), vanGlass);
+sideWindow.position.set(1.7,1.68,1.01);
+van.add(sideWindow);
+const sideWindow2 = sideWindow.clone(); sideWindow2.position.z = -1.01;
+van.add(sideWindow2);
+// cargo side panel seam (sliding door line) + rear door seam, purely cosmetic
+const doorSeam = new THREE.Mesh(new THREE.BoxGeometry(0.03,1.7,2.02), vanTrim);
+doorSeam.position.set(0.4,1.3,0);
+van.add(doorSeam);
+const rearSeamGeo = new THREE.BoxGeometry(0.03,1.9,0.03);
+const rearSeam = new THREE.Mesh(rearSeamGeo, vanTrim);
+rearSeam.position.set(-2.1,1.35,0);
+van.add(rearSeam);
+// grille + bumpers
+const grille = new THREE.Mesh(new THREE.BoxGeometry(0.06,0.5,1.4), vanTrim);
+grille.position.set(2.61,0.85,0);
+van.add(grille);
+const bumperF = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.35,2.05), vanTrim);
+bumperF.position.set(2.68,0.5,0); van.add(bumperF);
+const bumperR = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.35,2.05), vanTrim);
+bumperR.position.set(-2.15,0.5,0); van.add(bumperR);
+[[2.5,0.85,0.7],[2.5,0.85,-0.7]].forEach(p=>{
+  const light = new THREE.Mesh(new THREE.SphereGeometry(0.12,10,8), new THREE.MeshStandardMaterial({color:0xfff4c8, emissive:0xffdd88, emissiveIntensity:0.9}));
+  light.position.set(p[0],p[1],p[2]);
+  van.add(light);
+});
+[[-1.9,-1],[-1.9,1],[1.6,-1],[1.6,1]].forEach(p=>{
+  const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.42,0.32,18), vanTireMat);
+  // cylinder's default axis is Y; rotating -90° about X swings that axis onto Z,
+  // which is the van's width/left-right axis — the correct axle orientation.
+  // (previously this rotated about Z, which put the axle along the van's own
+  // length axis instead, making the wheels look like flat discs stuck sideways.)
+  wheel.rotation.x = Math.PI/2;
+  wheel.position.set(p[0],0.42,p[1]*1.08);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.34,10), vanHubMat);
+  hub.rotation.x = Math.PI/2; hub.position.copy(wheel.position);
+  van.add(wheel, hub);
+});
+van.position.set(0, 0, 19.5);
+scene.add(van);
+const VAN_ZONE = {minX:-3.4, maxX:3.4, minZ:16.6, maxZ:22.5};
+
+/* ---------------------------------------------------------------------
+   MONEY BAGS
+--------------------------------------------------------------------- */
+const bagPositions = [
+  [-4.5, -9.5], [-1.8, -10.2], [1.6, -10.2], [4.6, -9.4], [0, -6.4]
+];
+const bags = [];
+function drawBurlap(ctx,w,h){
+  ctx.fillStyle = '#c79a3d'; ctx.fillRect(0,0,w,h);
+  for(let i=0;i<26;i++){
+    ctx.strokeStyle = `rgba(90,60,20,${0.15+Math.random()*0.15})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const y = Math.random()*h;
+    ctx.moveTo(0,y); ctx.lineTo(w,y+ (Math.random()-0.5)*10); ctx.stroke();
+  }
+  for(let i=0;i<26;i++){
+    ctx.strokeStyle = `rgba(140,100,30,${0.1+Math.random()*0.12})`;
+    ctx.beginPath();
+    const x = Math.random()*w;
+    ctx.moveTo(x,0); ctx.lineTo(x+(Math.random()-0.5)*10,h); ctx.stroke();
+  }
+}
+const burlapTex = makeCanvasTexture(drawBurlap, 128,128, 2,2);
+const bagMat = new THREE.MeshStandardMaterial({map:burlapTex, color:0xd9b13a, roughness:0.85, metalness:0.05});
+const tieMat = new THREE.MeshStandardMaterial({color:0x5a4620, roughness:0.9});
+bagPositions.forEach(p=>{
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42,12,10), bagMat);
+  body.scale.set(1,0.85,1);
+  body.castShadow = true;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.24,0.22,10), bagMat);
+  neck.position.y = 0.36;
+  const tie = new THREE.Mesh(new THREE.TorusGeometry(0.15,0.035,6,12), tieMat);
+  tie.position.y = 0.42; tie.rotation.x = Math.PI/2;
+  const knot = new THREE.Mesh(new THREE.SphereGeometry(0.06,8,6), tieMat);
+  knot.position.y = 0.5;
+  g.add(body, neck, tie, knot);
+  g.position.set(p[0], 0.42, p[1]);
+  g.userData.bobPhase = Math.random()*Math.PI*2;
+  scene.add(g);
+  bags.push({mesh:g, collected:false, pos:new THREE.Vector3(p[0],0.42,p[1])});
+});
+document.getElementById('bagsTotal').textContent = bags.length;
+
+/* dollar sign markers floating above bags (simple sprites via canvas) */
+function makeLabelSprite(text, color){
+  const cnv = document.createElement('canvas'); cnv.width=64; cnv.height=64;
+  const ctx = cnv.getContext('2d');
+  ctx.font = 'bold 44px monospace';
+  ctx.fillStyle = color;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(text, 32, 34);
+  const tex = new THREE.CanvasTexture(cnv);
+  const mat = new THREE.SpriteMaterial({map:tex, transparent:true});
+  const spr = new THREE.Sprite(mat);
+  spr.scale.set(0.7,0.7,0.7);
+  return spr;
+}
+bags.forEach(b=>{
+  const spr = makeLabelSprite('$', '#ffe27a');
+  spr.position.set(0,0.9,0);
+  b.mesh.add(spr);
+});
+
+/* ---------------------------------------------------------------------
+   PLAYER
+--------------------------------------------------------------------- */
+const player = new THREE.Group();
+const bodyMat = new THREE.MeshStandardMaterial({color:0x1c1f24, roughness:0.75});
+const jacketMat = new THREE.MeshStandardMaterial({color:0x272b30, roughness:0.6});
+const skinMat = new THREE.MeshStandardMaterial({color:0xcf9a6c, roughness:0.8});
+const gloveMat = new THREE.MeshStandardMaterial({color:0x14171a, roughness:0.7});
+const bootMat = new THREE.MeshStandardMaterial({color:0x0f1113, roughness:0.75});
+
+const pBody = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.36,1.0,12), bodyMat);
+pBody.position.y = 0.85; pBody.castShadow = true;
+const pCollar = new THREE.Mesh(new THREE.TorusGeometry(0.28,0.07,8,14), jacketMat);
+pCollar.position.y = 1.34; pCollar.rotation.x = Math.PI/2;
+const pHead = new THREE.Mesh(new THREE.SphereGeometry(0.24,14,12), skinMat);
+pHead.position.y = 1.58; pHead.castShadow = true;
+const pMask = new THREE.Mesh(new THREE.BoxGeometry(0.46,0.11,0.26), new THREE.MeshStandardMaterial({color:0x0d0d0d}));
+pMask.position.set(0,1.58,0.03);
+const armGeo = new THREE.CylinderGeometry(0.09,0.1,0.75,8);
+const pArmL = new THREE.Mesh(armGeo, jacketMat); pArmL.position.set(0.4,0.9,0); pArmL.rotation.z = 0.18; pArmL.castShadow = true;
+const pArmR = new THREE.Mesh(armGeo, jacketMat); pArmR.position.set(-0.4,0.9,0); pArmR.rotation.z = -0.18; pArmR.castShadow = true;
+const handGeo = new THREE.SphereGeometry(0.1,8,8);
+const pHandL = new THREE.Mesh(handGeo, gloveMat); pHandL.position.set(0.47,0.54,0);
+const pHandR = new THREE.Mesh(handGeo, gloveMat); pHandR.position.set(-0.47,0.54,0);
+const legGeo = new THREE.CylinderGeometry(0.12,0.1,0.55,8);
+const pLegL = new THREE.Mesh(legGeo, bodyMat); pLegL.position.set(0.15,0.28,0);
+const pLegR = new THREE.Mesh(legGeo, bodyMat); pLegR.position.set(-0.15,0.28,0);
+const bootGeo = new THREE.BoxGeometry(0.2,0.14,0.32);
+const pBootL = new THREE.Mesh(bootGeo, bootMat); pBootL.position.set(0.15,0.07,0.04);
+const pBootR = new THREE.Mesh(bootGeo, bootMat); pBootR.position.set(-0.15,0.07,0.04);
+player.add(pBody, pCollar, pHead, pMask, pArmL, pArmR, pHandL, pHandR, pLegL, pLegR, pBootL, pBootR);
+player.position.set(0, 0, 9);
+scene.add(player);
+
+const playerState = { rot: Math.PI, radius: 0.42 };
+player.rotation.y = playerState.rot;
+
+/* ---------------------------------------------------------------------
+   GUARDS
+--------------------------------------------------------------------- */
+const guardMat = new THREE.MeshStandardMaterial({color:0x1c2b3f, roughness:0.6});
+const guardBeltMat = new THREE.MeshStandardMaterial({color:0x161a1e, roughness:0.7});
+const guardHeadMat = new THREE.MeshStandardMaterial({color:0xd9b48a, roughness:0.8});
+const guardCapMat = new THREE.MeshStandardMaterial({color:0x0f1a2c, roughness:0.55});
+const badgeMat = new THREE.MeshStandardMaterial({color:0xe8cf7a, metalness:0.75, roughness:0.25, emissive:0x554d20, emissiveIntensity:0.35});
+
+function drawStar(ctx,w,h){
+  ctx.clearRect(0,0,w,h);
+  const cx=w/2, cy=h/2, spikes=5, outerR=w*0.46, innerR=outerR*0.42;
+  ctx.beginPath();
+  for(let i=0;i<spikes*2;i++){
+    const r = i%2===0? outerR:innerR;
+    const a = (Math.PI/spikes)*i - Math.PI/2;
+    const x = cx+Math.cos(a)*r, y = cy+Math.sin(a)*r;
+    i===0? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = '#e8cf7a'; ctx.fill();
+  ctx.lineWidth = w*0.03; ctx.strokeStyle = '#7a6a2a'; ctx.stroke();
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.font = `bold ${Math.floor(h*0.16)}px sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('POLICE', cx, cy);
+}
+function drawPoliceBack(ctx,w,h){
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = '#f2d878';
+  ctx.font = `bold ${Math.floor(h*0.42)}px sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.lineWidth = 3; ctx.strokeStyle='rgba(0,0,0,0.6)';
+  ctx.strokeText('POLICE', w/2, h/2);
+  ctx.fillText('POLICE', w/2, h/2);
+}
+const starTex = makeCanvasTexture(drawStar, 128,128,1,1);
+const backTex = makeCanvasTexture(drawPoliceBack, 256,80,1,1);
+const starSpriteMat = new THREE.SpriteMaterial({map:starTex, transparent:true});
+const backMat = new THREE.MeshStandardMaterial({map:backTex, transparent:true, roughness:0.7});
+
+function makeGuard(){
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.38,1.0,12), guardMat);
+  body.position.y = 0.85; body.castShadow = true;
+  const backPrint = new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.16), backMat);
+  backPrint.position.set(0,1.0,-0.331); backPrint.rotation.y = Math.PI;
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.39,0.39,0.12,12), guardBeltMat);
+  belt.position.y = 0.42;
+  const starBadge = new THREE.Sprite(starSpriteMat);
+  starBadge.scale.set(0.16,0.16,0.16);
+  starBadge.position.set(0.2,1.06,0.34);
+
+  // head sized to sit fully inside the cap — no clipping
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22,14,12), guardHeadMat);
+  head.position.y = 1.46; head.castShadow = true;
+  const capCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.255,0.255,0.24,14), guardCapMat);
+  capCrown.position.y = 1.63; capCrown.castShadow = true;
+  const capTop = new THREE.Mesh(new THREE.SphereGeometry(0.255,14,8,0,Math.PI*2,0,Math.PI/2), guardCapMat);
+  capTop.position.y = 1.75;
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.31,0.31,0.03,14), guardCapMat);
+  brim.position.y = 1.505;
+  const capBadge = new THREE.Sprite(starSpriteMat);
+  capBadge.scale.set(0.1,0.1,0.1);
+  capBadge.position.set(0,1.63,0.255);
+
+  const armGeo = new THREE.CylinderGeometry(0.09,0.1,0.72,8);
+  const armL = new THREE.Mesh(armGeo, guardMat); armL.position.set(0.4,0.9,0); armL.rotation.z=0.15; armL.castShadow=true;
+  const armR = new THREE.Mesh(armGeo, guardMat); armR.position.set(-0.4,0.9,0); armR.rotation.z=-0.15; armR.castShadow=true;
+  const legGeo = new THREE.CylinderGeometry(0.12,0.1,0.55,8);
+  const legL = new THREE.Mesh(legGeo, guardMat); legL.position.set(0.15,0.28,0);
+  const legR = new THREE.Mesh(legGeo, guardMat); legR.position.set(-0.15,0.28,0);
+  const flashlight = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.05,0.28,8), new THREE.MeshStandardMaterial({color:0x333333, metalness:0.5}));
+  flashlight.rotation.z = Math.PI/2; flashlight.position.set(-0.5,0.55,0.15);
+  g.add(body, backPrint, belt, starBadge, head, capCrown, capTop, brim, capBadge, armL, armR, legL, legR, flashlight);
+  return g;
+}
+
+// vision cone (flat wedge on the floor) — wrapped in a group so we can yaw
+// it cleanly around world Y without fighting the flat X rotation of the mesh.
+function makeVisionCone(radius, fovDeg){
+  const fov = THREE.MathUtils.degToRad(fovDeg);
+  const geo = new THREE.CircleGeometry(radius, 24, -fov/2, fov);
+  const mat = new THREE.MeshBasicMaterial({color:0xffdd66, transparent:true, opacity:0.22, side:THREE.DoubleSide, depthWrite:false});
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI/2; // lay flat; local +X (theta=0) now points world +X
+  const group = new THREE.Group();
+  group.add(mesh);
+  group.position.y = 0.03;
+  return group;
+}
+
+const GUARD_RANGE = 7.5;
+const GUARD_FOV = 55; // degrees
+
+const guards = [
+  { mesh:makeGuard(), path:[[-9,7],[6,7]], t:0, speed:1.6, dir:1, coneRange:GUARD_RANGE, coneFov:GUARD_FOV, type:'patrol', chaseSpeed:3.5 },
+  { mesh:makeGuard(), path:[[7,-1],[-9,-1]], t:0, speed:1.9, dir:1, coneRange:GUARD_RANGE, coneFov:GUARD_FOV, type:'patrol', chaseSpeed:3.7 },
+  { mesh:makeGuard(), path:[[0,-9]], t:0, speed:0, dir:1, coneRange:6.5, coneFov:70, type:'spin', chaseSpeed:3.6 }
+];
+
+guards.forEach(gd=>{
+  scene.add(gd.mesh);
+  gd.cone = makeVisionCone(gd.coneRange, gd.coneFov);
+  scene.add(gd.cone);
+  const start = gd.path[0];
+  gd.mesh.position.set(start[0], 0, start[1]);
+});
+
+/* ---------------------------------------------------------------------
+   CIVILIANS — ambient pedestrians wandering the street outside
+--------------------------------------------------------------------- */
+function makeCivilian(shirtColor, pantsColor){
+  const g = new THREE.Group();
+  const shirtMat = new THREE.MeshStandardMaterial({color:shirtColor, roughness:0.85});
+  const pantsMat = new THREE.MeshStandardMaterial({color:pantsColor, roughness:0.85});
+  const skinMat = new THREE.MeshStandardMaterial({color:0xceA07a, roughness:0.85});
+  const hairMat = new THREE.MeshStandardMaterial({color:0x2a2018, roughness:0.9});
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.3,0.85,10), shirtMat);
+  body.position.y = 0.78; body.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.21,12,10), skinMat);
+  head.position.y = 1.36; head.castShadow = true;
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.22,12,10,0,Math.PI*2,0,Math.PI/1.8), hairMat);
+  hair.position.y = 1.39;
+  const armGeo = new THREE.CylinderGeometry(0.075,0.08,0.62,8);
+  const armL = new THREE.Mesh(armGeo, shirtMat); armL.position.set(0.33,0.8,0); armL.rotation.z=0.1;
+  const armR = new THREE.Mesh(armGeo, shirtMat); armR.position.set(-0.33,0.8,0); armR.rotation.z=-0.1;
+  const legGeo = new THREE.CylinderGeometry(0.1,0.09,0.5,8);
+  const legL = new THREE.Mesh(legGeo, pantsMat); legL.position.set(0.13,0.25,0);
+  const legR = new THREE.Mesh(legGeo, pantsMat); legR.position.set(-0.13,0.25,0);
+  g.add(body, head, hair, armL, armR, legL, legR);
+  return g;
+}
+
+const civilianDefs = [
+  {shirt:0xb5432c, pants:0x2c2f36, path:[[-16,17],[15,17]], speed:1.0},
+  {shirt:0x3d6b4f, pants:0x1e2226, path:[[-15,21.5],[9,21.5]], speed:0.85},
+  {shirt:0x5566aa, pants:0x33261c, path:[[-11,15.5],[-11,23.5]], speed:0.9},
+  {shirt:0xaa8833, pants:0x2a2a2e, path:[[12.5,15.5],[12.5,23.5]], speed:1.05},
+  {shirt:0x884499, pants:0x24272b, path:[[-3,25.5],[9,25.5]], speed:0.8},
+];
+const civilians = [];
+civilianDefs.forEach(cd=>{
+  const mesh = makeCivilian(cd.shirt, cd.pants);
+  scene.add(mesh);
+  const start = cd.path[0];
+  mesh.position.set(start[0], 0, start[1]);
+  civilians.push({mesh, path:cd.path, t:0, speed:cd.speed, baseSpeed:cd.speed, dir:1});
+});
+
+function updateCivilians(dt){
+  civilians.forEach(c=>{
+    const [a,b] = c.path;
+    const from = c.dir>0? a : b;
+    const to   = c.dir>0? b : a;
+    const fromV = new THREE.Vector2(from[0],from[1]);
+    const toV   = new THREE.Vector2(to[0],to[1]);
+    const total = fromV.distanceTo(toV);
+    c.t += c.speed*dt;
+    if(c.t >= total){ c.t = 0; c.dir *= -1; }
+    const p = fromV.clone().lerp(toV, total? c.t/total : 0);
+    c.mesh.position.set(p.x,0,p.y);
+    c.mesh.rotation.y = Math.atan2(toV.x-fromV.x, toV.y-fromV.y);
+  });
+}
+
+/* ---------------------------------------------------------------------
+   INPUT
+--------------------------------------------------------------------- */
+const keys = {};
+window.addEventListener('keydown', e=>{ keys[e.code]=true; });
+window.addEventListener('keyup', e=>{ keys[e.code]=false; });
+
+/* ---------------------------------------------------------------------
+   COLLISION HELPERS
+--------------------------------------------------------------------- */
+function resolveCollision(pos, radius){
+  for(const w of walls){
+    const nx = Math.max(w.minX-radius, Math.min(pos.x, w.maxX+radius));
+    const nz = Math.max(w.minZ-radius, Math.min(pos.z, w.maxZ+radius));
+    // if closest point inside wall footprint -> overlapping
+    const closestX = Math.max(w.minX, Math.min(pos.x, w.maxX));
+    const closestZ = Math.max(w.minZ, Math.min(pos.z, w.maxZ));
+    const dx = pos.x - closestX, dz = pos.z - closestZ;
+    const distSq = dx*dx + dz*dz;
+    if(distSq < radius*radius){
+      const dist = Math.sqrt(distSq) || 0.0001;
+      const push = (radius - dist);
+      pos.x += (dx/dist) * push;
+      pos.z += (dz/dist) * push;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------
+   GAME STATE
+--------------------------------------------------------------------- */
+let started = false;
+let gameOver = false;
+let alarmTriggered = false;
+let alarmTimeLeft = 30;
+let detection = 0; // 0..100
+let score = 0;
+let bagsCollected = 0;
+const clock = new THREE.Clock();
+
+const scoreVal = document.getElementById('scoreVal');
+const bagsVal = document.getElementById('bagsVal');
+const stealthFill = document.getElementById('stealthFill');
+const stealthPct = document.getElementById('stealthPct');
+const alarmTimeEl = document.getElementById('alarmTime');
+const banner = document.getElementById('banner');
+
+function showBanner(text, ms){
+  banner.textContent = text;
+  banner.classList.add('show');
+  if(ms){ setTimeout(()=>banner.classList.remove('show'), ms); }
+}
+
+/* -----------------------------------------------------------------
+   AUDIO SYSTEM — procedural ambience, music, footsteps, siren, stingers
+   (no external files; everything synthesized with Web Audio)
+------------------------------------------------------------------ */
+const Audio = {
+  ctx:null, master:null, musicGain:null, sfxGain:null, ambienceNodes:null,
+  sirenInterval:null, musicInterval:null, muted:false,
+
+  init(){
+    if(this.ctx) return;
+    try{
+      this.ctx = new (window.AudioContext||window.webkitAudioContext)();
+      this.master = this.ctx.createGain(); this.master.gain.value = 0.55;
+      this.master.connect(this.ctx.destination);
+      this.musicGain = this.ctx.createGain(); this.musicGain.gain.value = 0.32;
+      this.musicGain.connect(this.master);
+      this.sfxGain = this.ctx.createGain(); this.sfxGain.gain.value = 1.0;
+      this.sfxGain.connect(this.master);
+
+      // shared reverb send/return — gives synthesized tones a sense of room
+      // instead of the dry, clipped-sounding "8-bit" character of raw oscillators
+      this.reverb = this.ctx.createConvolver();
+      this.reverb.buffer = this.createImpulse(2.4, 2.6);
+      this.reverbSend = this.ctx.createGain(); this.reverbSend.gain.value = 0.55;
+      this.reverbSend.connect(this.reverb);
+      this.reverb.connect(this.master);
+    }catch(e){}
+  },
+  createImpulse(seconds, decay){
+    const ctx = this.ctx;
+    const len = Math.floor(ctx.sampleRate*seconds);
+    const impulse = ctx.createBuffer(2, len, ctx.sampleRate);
+    for(let ch=0; ch<2; ch++){
+      const data = impulse.getChannelData(ch);
+      for(let i=0;i<len;i++){ data[i] = (Math.random()*2-1) * Math.pow(1 - i/len, decay); }
+    }
+    return impulse;
+  },
+  resume(){ if(this.ctx && this.ctx.state==='suspended') this.ctx.resume(); },
+  setMuted(m){
+    this.muted = m;
+    if(this.master) this.master.gain.value = m? 0 : 0.55;
+  },
+  noiseBuffer(seconds){
+    const ctx = this.ctx;
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate*seconds), ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+    return buf;
+  },
+
+  /* low room hum + filtered air noise, loops forever */
+  startAmbience(){
+    if(!this.ctx || this.ambienceNodes) return;
+    const ctx = this.ctx;
+    const osc = ctx.createOscillator(); osc.type='sine'; osc.frequency.value=46;
+    const oscGain = ctx.createGain(); oscGain.gain.value=0.05;
+    const lfo = ctx.createOscillator(); lfo.frequency.value=0.06;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value=0.018;
+    lfo.connect(lfoGain); lfoGain.connect(oscGain.gain);
+    osc.connect(oscGain); oscGain.connect(this.master);
+    osc.start(); lfo.start();
+
+    const noiseSrc = ctx.createBufferSource();
+    noiseSrc.buffer = this.noiseBuffer(4); noiseSrc.loop = true;
+    const filter = ctx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=260;
+    const noiseGain = ctx.createGain(); noiseGain.gain.value=0.02;
+    noiseSrc.connect(filter); filter.connect(noiseGain); noiseGain.connect(this.master);
+    noiseSrc.start();
+    this.ambienceNodes = {osc,lfo,noiseSrc};
+  },
+
+  /* sustained cinematic pad (detuned filtered saws) + sparse soft motif notes
+     on top — replaces the old rapid-fire square-wave blips with something
+     closer to a tense film-score drone. */
+  startMusic(){
+    if(!this.ctx || this.padNodes) return;
+    const ctx = this.ctx;
+    const filter = ctx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=340; filter.Q.value=0.7;
+    const padGain = ctx.createGain(); padGain.gain.value = 0.0001;
+    const filterLfo = ctx.createOscillator(); filterLfo.type='sine'; filterLfo.frequency.value=0.05;
+    const filterLfoGain = ctx.createGain(); filterLfoGain.gain.value=70;
+    filterLfo.connect(filterLfoGain); filterLfoGain.connect(filter.frequency);
+    filterLfo.start();
+
+    const root = 55; // A1
+    const padOscs = [1, 1.5, 2].map((mult,i)=>{
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = root*mult;
+      o.detune.value = (i-1)*7;
+      o.connect(filter);
+      o.start();
+      return o;
+    });
+    filter.connect(padGain);
+    padGain.connect(this.musicGain);
+    padGain.connect(this.reverbSend);
+    padGain.gain.linearRampToValueAtTime(0.1, ctx.currentTime+2.5);
+
+    this.padNodes = {padOscs, padGain, filter, filterLfo, root};
+    this.musicStep = 0;
+    this.scheduleMotif();
+  },
+
+  scheduleMotif(){
+    const playNote = ()=>{
+      if(!this.ctx) return;
+      const scaleTense = [220,261.6,293.7,329.6,392];
+      const scaleAlarm  = [220,261.6,311.1,349.2,440];
+      const scale = alarmTriggered ? scaleAlarm : scaleTense;
+      const note = scale[this.musicStep % scale.length];
+      const ctx = this.ctx;
+      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = note;
+      const filt = ctx.createBiquadFilter(); filt.type='lowpass';
+      filt.frequency.value = alarmTriggered? 1900 : 1100;
+      const g = ctx.createGain(); g.gain.value = 0.0001;
+      o.connect(filt); filt.connect(g);
+      g.connect(this.musicGain); g.connect(this.reverbSend);
+      const t = ctx.currentTime;
+      const peak = alarmTriggered? 0.15 : 0.1;
+      const tail = alarmTriggered? 0.85 : 1.3;
+      g.gain.linearRampToValueAtTime(peak, t+0.06);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+tail);
+      o.start(t); o.stop(t+tail+0.05);
+      this.musicStep++;
+    };
+    playNote();
+    this.musicInterval = setInterval(playNote, alarmTriggered? 520 : 900);
+  },
+  restartMusicTempo(){
+    if(this.musicInterval){ clearInterval(this.musicInterval); this.musicInterval=null; this.scheduleMotif(); }
+    if(this.padNodes){
+      const ctx = this.ctx;
+      this.padNodes.filter.frequency.linearRampToValueAtTime(alarmTriggered? 950:340, ctx.currentTime+1.2);
+      const mults = [1,1.5,2];
+      this.padNodes.padOscs.forEach((o,i)=>{
+        o.frequency.linearRampToValueAtTime((alarmTriggered? 61.7:55)*mults[i], ctx.currentTime+1.2);
+      });
+    }
+  },
+  stopMusic(){
+    if(this.musicInterval){ clearInterval(this.musicInterval); this.musicInterval=null; }
+    if(this.padNodes){
+      const ctx = this.ctx;
+      const nodes = this.padNodes;
+      nodes.padGain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime+1.4);
+      setTimeout(()=>{
+        nodes.padOscs.forEach(o=>{ try{o.stop();}catch(e){} });
+        try{ nodes.filterLfo.stop(); }catch(e){}
+      }, 1600);
+      this.padNodes = null;
+    }
+  },
+
+  footstep(){
+    if(!this.ctx) return;
+    const ctx = this.ctx;
+    // low impact thump (heel strike)
+    const thump = ctx.createOscillator(); thump.type='sine';
+    thump.frequency.setValueAtTime(120+Math.random()*20, ctx.currentTime);
+    thump.frequency.exponentialRampToValueAtTime(45, ctx.currentTime+0.09);
+    const thumpGain = ctx.createGain(); thumpGain.gain.value = 0.0001;
+    thump.connect(thumpGain); thumpGain.connect(this.sfxGain);
+    thumpGain.gain.linearRampToValueAtTime(0.12, ctx.currentTime+0.008);
+    thumpGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.11);
+    thump.start(); thump.stop(ctx.currentTime+0.12);
+    // scuff/contact noise
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuffer(0.06);
+    const filter = ctx.createBiquadFilter(); filter.type='bandpass';
+    filter.frequency.value = 900+Math.random()*400; filter.Q.value=0.7;
+    const g = ctx.createGain(); g.gain.value=0.045;
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.05);
+    src.connect(filter); filter.connect(g); g.connect(this.sfxGain);
+    src.start();
+  },
+
+  beep(freq, dur, type, vol){
+    if(!this.ctx) return;
+    const ctx = this.ctx;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type||'sine'; o.frequency.value = freq; g.gain.value = 0.0001;
+    o.connect(g); g.connect(this.sfxGain); g.connect(this.reverbSend);
+    o.start();
+    const t = ctx.currentTime;
+    g.gain.linearRampToValueAtTime(vol||0.15, t+0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.stop(t + dur + 0.02);
+  },
+
+  /* metallic coin/cash-grab sound — layered detuned bell partials with a
+     fast decay, plus a short paper-rustle burst, instead of one square-wave blip */
+  cashSound(){
+    if(!this.ctx) return;
+    const ctx = this.ctx;
+    [1, 2.41, 3.9].forEach((mult,i)=>{
+      const o = ctx.createOscillator(); o.type='sine';
+      o.frequency.value = 1400*mult;
+      const g = ctx.createGain(); g.gain.value=0.0001;
+      o.connect(g); g.connect(this.sfxGain); g.connect(this.reverbSend);
+      const t = ctx.currentTime;
+      const peak = 0.09/(i+1);
+      g.gain.linearRampToValueAtTime(peak, t+0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+0.35-i*0.05);
+      o.start(t); o.stop(t+0.4);
+    });
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuffer(0.12);
+    const filter = ctx.createBiquadFilter(); filter.type='highpass'; filter.frequency.value=3200;
+    const g2 = ctx.createGain(); g2.gain.value=0.05;
+    g2.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.12);
+    src.connect(filter); filter.connect(g2); g2.connect(this.sfxGain);
+    src.start();
+  },
+
+  /* smooth, continuously-swept wail instead of alternating hard beeps —
+     much closer to a real siren than discrete tones */
+  startSiren(){
+    if(!this.ctx || this.sirenOsc) return;
+    const ctx = this.ctx;
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 640;
+    const overtone = ctx.createOscillator(); overtone.type='sine'; overtone.frequency.value = 1280;
+    const overtoneGain = ctx.createGain(); overtoneGain.gain.value = 0.06;
+    const g = ctx.createGain(); g.gain.value = 0.0001;
+    o.connect(g); overtone.connect(overtoneGain); overtoneGain.connect(g);
+    g.connect(this.sfxGain); g.connect(this.reverbSend);
+    o.start(); overtone.start();
+    g.gain.linearRampToValueAtTime(0.16, ctx.currentTime+0.4);
+    this.sirenOsc = o; this.sirenOvertone = overtone; this.sirenGain = g;
+    let rising = true;
+    const sweep = ()=>{
+      const t = ctx.currentTime;
+      const target = rising? 880 : 620;
+      o.frequency.linearRampToValueAtTime(target, t+0.75);
+      overtone.frequency.linearRampToValueAtTime(target*2, t+0.75);
+      rising = !rising;
+    };
+    sweep();
+    this.sirenInterval = setInterval(sweep, 750);
+  },
+  stopSiren(){
+    if(this.sirenInterval){ clearInterval(this.sirenInterval); this.sirenInterval=null; }
+    if(this.sirenOsc){
+      const ctx = this.ctx;
+      this.sirenGain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime+0.4);
+      const o = this.sirenOsc, ot = this.sirenOvertone;
+      setTimeout(()=>{ try{o.stop();}catch(e){} try{ot.stop();}catch(e){} }, 500);
+      this.sirenOsc = null; this.sirenOvertone = null; this.sirenGain = null;
+    }
+  },
+
+  /* "busted" stinger — a descending detuned brass-like tone through a
+     tightening lowpass filter, plus a burst of radio static, instead of a
+     single flat sawtooth beep */
+  catchSound(){
+    if(!this.ctx) return;
+    const ctx = this.ctx;
+    [0, -6].forEach(det=>{
+      const o = ctx.createOscillator(); o.type='sawtooth'; o.frequency.value=180; o.detune.value=det;
+      const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=1400;
+      const g = ctx.createGain(); g.gain.value=0.0001;
+      o.connect(filt); filt.connect(g); g.connect(this.sfxGain); g.connect(this.reverbSend);
+      const t = ctx.currentTime;
+      o.frequency.exponentialRampToValueAtTime(70, t+0.9);
+      filt.frequency.exponentialRampToValueAtTime(300, t+0.9);
+      g.gain.linearRampToValueAtTime(0.22, t+0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+0.95);
+      o.start(t); o.stop(t+1.0);
+    });
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuffer(0.4);
+    const filter = ctx.createBiquadFilter(); filter.type='bandpass'; filter.frequency.value=1800; filter.Q.value=0.6;
+    const g2 = ctx.createGain(); g2.gain.value=0.0001;
+    src.connect(filter); filter.connect(g2); g2.connect(this.sfxGain);
+    const t = ctx.currentTime;
+    g2.gain.linearRampToValueAtTime(0.08, t+0.02);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t+0.4);
+    src.start();
+  },
+  /* success chord swell — a filtered major-triad pad that fades in and out,
+     instead of an arpeggiated string of pure tones */
+  winSound(){
+    if(!this.ctx) return;
+    const ctx = this.ctx;
+    const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=2200;
+    const chordGain = ctx.createGain(); chordGain.gain.value=0.0001;
+    filt.connect(chordGain); chordGain.connect(this.sfxGain); chordGain.connect(this.reverbSend);
+    [523.25, 659.25, 783.99, 1046.5].forEach((f,i)=>{
+      const o = ctx.createOscillator(); o.type = i<2? 'triangle':'sine'; o.frequency.value=f;
+      o.detune.value = (i-1.5)*4;
+      o.connect(filt);
+      o.start(); o.stop(ctx.currentTime+2.2);
+    });
+    const t = ctx.currentTime;
+    chordGain.gain.linearRampToValueAtTime(0.18, t+0.15);
+    chordGain.gain.setValueAtTime(0.18, t+1.2);
+    chordGain.gain.exponentialRampToValueAtTime(0.0001, t+2.2);
+  }
+};
+
+const muteHint = document.createElement('div');
+window.addEventListener('keydown', e=>{
+  if(e.code==='KeyM'){ Audio.setMuted(!Audio.muted); showBanner(Audio.muted? '🔇 MUTED':'🔊 UNMUTED', 900); }
+});
+
+/* ---------------------------------------------------------------------
+   MAIN LOOP
+--------------------------------------------------------------------- */
+let footstepTimer = 0;
+function updatePlayer(dt){
+  const turnSpeed = 2.6;
+  if(keys['KeyA']) playerState.rot += turnSpeed*dt;
+  if(keys['KeyD']) playerState.rot -= turnSpeed*dt;
+  player.rotation.y = playerState.rot;
+
+  let move = 0;
+  if(keys['KeyW']) move += 1;
+  if(keys['KeyS']) move -= 1;
+
+  const sprint = keys['ShiftLeft']||keys['ShiftRight'];
+  const speed = (sprint?5.4:3.1);
+
+  if(move !== 0){
+    const dx = Math.sin(playerState.rot) * move * speed * dt;
+    const dz = Math.cos(playerState.rot) * move * speed * dt;
+    const newPos = player.position.clone();
+    newPos.x += dx; newPos.z += dz;
+    // clamp to street bounds
+    newPos.x = Math.max(-19, Math.min(19, newPos.x));
+    newPos.z = Math.max(-13.5, Math.min(23, newPos.z));
+    resolveCollision(newPos, playerState.radius);
+    player.position.copy(newPos);
+
+    footstepTimer += dt;
+    const stepInterval = sprint? 0.26 : 0.42;
+    if(footstepTimer >= stepInterval){ footstepTimer = 0; Audio.footstep(); }
+  } else {
+    footstepTimer = 0.3;
+  }
+}
+
+function updateCamera(dt){
+  const behind = 5.2, up = 3.0;
+  const targetPos = new THREE.Vector3(
+    player.position.x - Math.sin(playerState.rot)*behind,
+    up,
+    player.position.z - Math.cos(playerState.rot)*behind
+  );
+  camera.position.lerp(targetPos, Math.min(1, dt*4.5));
+  const lookAt = player.position.clone();
+  lookAt.y += 1.1;
+  camera.lookAt(lookAt);
+}
+
+function updateGuards(dt){
+  guards.forEach(gd=>{
+    if(alarmTriggered){
+      // alarm's up — every guard now beelines straight for the player
+      const dx = player.position.x - gd.mesh.position.x;
+      const dz = player.position.z - gd.mesh.position.z;
+      const dist = Math.sqrt(dx*dx+dz*dz);
+      if(dist > 0.05){
+        const nx = dx/dist, nz = dz/dist;
+        const chaseSpeed = gd.chaseSpeed || 3.5;
+        const newPos = new THREE.Vector3(
+          gd.mesh.position.x + nx*chaseSpeed*dt,
+          0,
+          gd.mesh.position.z + nz*chaseSpeed*dt
+        );
+        resolveCollision(newPos, 0.4);
+        gd.mesh.position.copy(newPos);
+        gd.facing = Math.atan2(nx, nz);
+        gd.mesh.rotation.y = gd.facing;
+      }
+    } else if(gd.type==='patrol'){
+      const [a,b] = gd.path;
+      const from = gd.dir>0? a : b;
+      const to   = gd.dir>0? b : a;
+      const fromV = new THREE.Vector2(from[0],from[1]);
+      const toV   = new THREE.Vector2(to[0],to[1]);
+      const total = fromV.distanceTo(toV);
+      gd.t += gd.speed*dt;
+      if(gd.t >= total){ gd.t = 0; gd.dir *= -1; }
+      const p = fromV.clone().lerp(toV, total? gd.t/total : 0);
+      gd.mesh.position.set(p.x,0,p.y);
+      const heading = Math.atan2(toV.x-fromV.x, toV.y-fromV.y);
+      gd.mesh.rotation.y = heading;
+      gd.facing = heading;
+    } else if(gd.type==='spin'){
+      gd.t += dt*0.6;
+      const heading = Math.sin(gd.t)*Math.PI*0.6;
+      gd.mesh.rotation.y = heading;
+      gd.facing = heading;
+    }
+    gd.cone.position.set(gd.mesh.position.x, 0.03, gd.mesh.position.z);
+    // local +X of the flattened cone mesh points world +X at rotation.y=0;
+    // guard heading uses forward=(sin(theta),cos(theta)), so offset by -PI/2
+    // to align the cone's bisector with the guard's actual facing direction.
+    gd.cone.rotation.y = gd.facing - Math.PI/2;
+  });
+}
+
+function checkDetection(dt){
+  let seen = false;
+  let closeCall = false;
+  guards.forEach(gd=>{
+    const gx = gd.mesh.position.x, gz = gd.mesh.position.z;
+    const dx = player.position.x - gx, dz = player.position.z - gz;
+    const dist = Math.sqrt(dx*dx+dz*dz);
+    if(dist < 1.1) closeCall = true;
+    if(dist <= gd.coneRange){
+      const angleToPlayer = Math.atan2(dx, dz);
+      let diff = angleToPlayer - gd.facing;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      if(Math.abs(diff) <= THREE.MathUtils.degToRad(gd.coneFov/2)){
+        seen = true;
+      }
+    }
+  });
+
+  if(seen && !alarmTriggered){
+    detection = Math.min(100, detection + dt*45);
+  } else if(!alarmTriggered){
+    detection = Math.max(0, detection - dt*22);
+  }
+
+  stealthFill.style.width = detection.toFixed(0)+'%';
+  stealthPct.textContent = detection.toFixed(0)+'%';
+  stealthFill.style.background = detection>70? 'var(--alarm)' : (detection>35? 'var(--amber)' : 'var(--green)');
+
+  if(detection >= 100 && !alarmTriggered){
+    triggerAlarm();
+  }
+
+  if(alarmTriggered && closeCall){
+    endGame(false, 'CAUGHT');
+  }
+}
+
+function triggerAlarm(){
+  alarmTriggered = true;
+  document.body.classList.add('alarm');
+  alarmLights.forEach(l=> l.intensity = 2.2);
+  guards.forEach(gd=>{
+    const mat = gd.cone.children[0].material;
+    mat.color.setHex(0xff3b3b);
+    mat.opacity = 0.3;
+  });
+  civilians.forEach(c=>{ c.speed = c.baseSpeed * 2.4; });
+  showBanner('⚠ ALARM TRIPPED — THEY\'RE COMING FOR YOU', 2200);
+  Audio.startSiren();
+  Audio.restartMusicTempo();
+}
+
+function updateAlarmTimer(dt){
+  if(!alarmTriggered || gameOver) return;
+  alarmTimeLeft -= dt;
+  alarmTimeEl.textContent = Math.max(0, Math.ceil(alarmTimeLeft));
+  if(alarmTimeLeft <= 0){
+    endGame(false, 'CAUGHT');
+  }
+}
+
+function animateBags(t){
+  bags.forEach(b=>{
+    if(b.collected) return;
+    b.mesh.position.y = 0.42 + Math.sin(t*2 + b.mesh.userData.bobPhase)*0.05;
+    b.mesh.rotation.y += 0.4*0.016;
+  });
+}
+
+function checkBags(){
+  bags.forEach(b=>{
+    if(b.collected) return;
+    const dx = player.position.x-b.pos.x, dz = player.position.z-b.pos.z;
+    if(Math.sqrt(dx*dx+dz*dz) < 1.0){
+      b.collected = true;
+      bagsCollected++;
+      score += 2000;
+      scoreVal.textContent = score;
+      bagsVal.textContent = bagsCollected;
+      scene.remove(b.mesh);
+      Audio.beep(880,0.15,'square',0.18);
+      showBanner('+ $2000 SECURED', 900);
+    }
+  });
+}
+
+function checkVan(){
+  const p = player.position;
+  if(p.x>=VAN_ZONE.minX && p.x<=VAN_ZONE.maxX && p.z>=VAN_ZONE.minZ && p.z<=VAN_ZONE.maxZ){
+    endGame(true, bagsCollected>0? 'HEIST COMPLETE' : 'ESCAPED EMPTY-HANDED');
+  }
+}
+
+/* ---------------------------------------------------------------------
+   START / END
+--------------------------------------------------------------------- */
+const startOverlay = document.getElementById('startOverlay');
+const endOverlay = document.getElementById('endOverlay');
+const endTitle = document.getElementById('endTitle');
+const endScore = document.getElementById('endScore');
+
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  startOverlay.classList.add('hidden');
+  started = true;
+  clock.start();
+  Audio.init();
+  Audio.resume();
+  Audio.startAmbience();
+  Audio.startMusic();
+});
+
+document.getElementById('restartBtn').addEventListener('click', ()=> location.reload());
+
+function endGame(win, label){
+  if(gameOver) return;
+  gameOver = true;
+  endTitle.textContent = label;
+  endTitle.className = win? 'win':'lose';
+  endScore.textContent = 'You escaped with $' + score + (win? '' : ' — busted before cashing out');
+  document.body.classList.remove('alarm');
+  Audio.stopSiren();
+  Audio.stopMusic();
+  if(win) Audio.winSound(); else Audio.catchSound();
+  setTimeout(()=> endOverlay.classList.remove('hidden'), 500);
+}
+
+/* ---------------------------------------------------------------------
+   RENDER LOOP
+--------------------------------------------------------------------- */
+let elapsed = 0;
+function tick(){
+  requestAnimationFrame(tick);
+  const dt = Math.min(0.05, clock.getDelta());
+  elapsed += dt;
+  camMount.rotation.y = Math.sin(elapsed*0.4)*0.9;
+  if(started && !gameOver){
+    updatePlayer(dt);
+    updateGuards(dt);
+    updateCivilians(dt);
+    checkDetection(dt);
+    updateAlarmTimer(dt);
+    animateBags(elapsed);
+    checkBags();
+    checkVan();
+  }
+  updateCamera(dt);
+  renderer.render(scene, camera);
+}
+tick();
+
+})();
+</script>
+</body>
+</html>
