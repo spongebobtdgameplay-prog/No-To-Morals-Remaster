@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js";
-import {CollisionWorld} from "./collision.js";
-import {CharacterAssets} from "./assets.js";
-import {BankWorld} from "./world.js";
-import {PlayerController} from "./player.js";
-import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js";
+import {GameConfig} from "./config.js?v=20260830-v01-models";
+import {CollisionWorld} from "./collision.js?v=20260830-v01-models";
+import {CharacterAssets} from "./assets.js?v=20260830-v01-models";
+import {BankWorld} from "./world.js?v=20260830-v01-models";
+import {PlayerController} from "./player.js?v=20260830-v01-models";
+import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-v01-models";
 
 const Canvas = document.getElementById("GameCanvas");
 const Renderer = new THREE.WebGLRenderer({canvas:Canvas,antialias:true,powerPreference:"high-performance"});
