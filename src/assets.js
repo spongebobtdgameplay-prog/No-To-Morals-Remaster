@@ -39,7 +39,7 @@ function CloneMaterial(Material,Role){
 
   if(Clone.color){
     if(Role === "Robber"){
-      Clone.color.lerp(new THREE.Color(0x111418),0.68);
+      Clone.color.lerp(new THREE.Color(0x171b20),0.38);
     }else{
       Clone.color.lerp(new THREE.Color(0x20384f),0.34);
     }
@@ -107,9 +107,9 @@ class ClipAnimator{
     this.Current = null;
 
     this.Actions = {
-      Idle:this.CreateAction(FindClip(Animations,["Idle","Idle_1","Stand"])),
-      Walk:this.CreateAction(FindClip(Animations,["Walk","Walking","Walking_A"])),
-      Run:this.CreateAction(FindClip(Animations,["Run","Running","Running_A"]))
+      Idle:this.CreateAction(FindClip(Animations,["Idle_Gun","Idle","Stand"])),
+      Walk:this.CreateAction(FindClip(Animations,["Walk","Walking"])),
+      Run:this.CreateAction(FindClip(Animations,["Run","Run_Shoot","Running"]))
     };
 
     if(this.Actions.Idle) this.Play("Idle",0);
@@ -204,7 +204,7 @@ export class CharacterAssets{
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260830-downtown2");
+    const Response = await fetch("assets/models/manifest.json?v=20260830-repair3");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
 
     this.Manifest = await Response.json();
@@ -255,9 +255,9 @@ export class CharacterAssets{
     ]);
 
     const HasGenericMovement = Boolean(
-      FindClip(Source.Animations,["Idle","Idle_1","Stand"]) &&
-      FindClip(Source.Animations,["Walk","Walking","Walking_A"]) &&
-      FindClip(Source.Animations,["Run","Running","Running_A"])
+      FindClip(Source.Animations,["Idle_Gun","Idle","Stand"]) &&
+      FindClip(Source.Animations,["Walk","Walking"]) &&
+      FindClip(Source.Animations,["Run","Run_Shoot","Running"])
     );
 
     return {
@@ -266,7 +266,7 @@ export class CharacterAssets{
         ? new ClipAnimator(Model,Source.Animations)
         : new BoneAnimator(Model),
       RightHand,
-      FacingOffset:Math.PI
+      FacingOffset:-Math.PI/2
     };
   }
 }
