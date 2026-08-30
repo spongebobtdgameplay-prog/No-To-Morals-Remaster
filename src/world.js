@@ -34,7 +34,7 @@ export class BankWorld{
     this.Collision = Collision;
     this.Props = new PropLibrary();
     this.Loot = [];
-    this.GearPosition = new THREE.Vector3(-9.2,0,7.05);
+    this.GearPosition = new THREE.Vector3(-9.0,0,7.0);
     this.GearDisplay = null;
     this.VanPosition = new THREE.Vector3(7,0,20);
     this.PoliceSpawns = [
@@ -135,110 +135,140 @@ export class BankWorld{
   async LoadModels(){
     await this.Props.Load();
 
-    this.AddProp("Doorway",{
-      Position:new THREE.Vector3(0,0,11.72),
-      TargetHeight:3.1,
-      Tint:0x555b5f
-    });
+    const ReceptionPositions = [-4.6,0,4.6];
 
-    for(const X of [-5.4,-1.8,1.8,5.4]){
-      this.AddProp("Desk",{
-        Position:new THREE.Vector3(X,0,3.15),
-        TargetWidth:2.7,
+    for(const X of ReceptionPositions){
+      this.AddProp("ReceptionDesk",{
+        Position:new THREE.Vector3(X,0,3.35),
+        TargetWidth:3.0,
         RotationY:Math.PI,
-        Tint:0x54483c
+        Tint:0x5f5045,
+        TintStrength:0.08
       });
+
+      this.AddProp("OfficeChair",{
+        Position:new THREE.Vector3(X,0,1.85),
+        TargetHeight:1.08,
+        RotationY:0,
+        Tint:0x2c3840,
+        TintStrength:0.10
+      });
+
       this.AddProp("Monitor",{
-        Position:new THREE.Vector3(X,0.86,3.02),
-        TargetHeight:0.52,
+        Position:new THREE.Vector3(X,0.84,3.08),
+        TargetHeight:0.55,
         RotationY:Math.PI,
-        Tint:0x293238
+        Collision:false,
+        Tint:0x293036,
+        TintStrength:0.06
       });
 
-      this.AddProp("Keyboard",{
-        Position:new THREE.Vector3(X,0.84,3.34),
-        TargetWidth:0.55,
+      this.AddProp("Laptop",{
+        Position:new THREE.Vector3(X+0.55,0.83,3.34),
+        TargetWidth:0.62,
         RotationY:Math.PI,
-        Tint:0x24282b
-      });
-
-      this.AddProp("ChairDesk",{
-        Position:new THREE.Vector3(X,0,1.82),
-        TargetHeight:1.05,
-        Tint:0x32383d
+        Collision:false,
+        Tint:0x31363b,
+        TintStrength:0.05
       });
     }
 
-    for(const Side of [-1,1]){
-      const X = Side*9.15;
+    const WaitingAreas = [
+      {
+        Couch:new THREE.Vector3(-9.7,0,8.0),
+        CouchRotation:Math.PI/2,
+        Chair:new THREE.Vector3(-7.8,0,9.45),
+        ChairRotation:Math.PI,
+        Plant:new THREE.Vector3(-11.75,0,8.8),
+        Lamp:new THREE.Vector3(-11.0,0,5.15)
+      },
+      {
+        Couch:new THREE.Vector3(9.7,0,8.0),
+        CouchRotation:-Math.PI/2,
+        Chair:new THREE.Vector3(7.8,0,9.45),
+        ChairRotation:Math.PI,
+        Plant:new THREE.Vector3(11.75,0,8.8),
+        Lamp:new THREE.Vector3(11.0,0,5.15)
+      }
+    ];
 
-      this.AddProp("Desk",{
-        Position:new THREE.Vector3(X,0,0.25),
-        TargetWidth:2.6,
-        RotationY:Side>0 ? -Math.PI/2 : Math.PI/2,
-        Tint:0x4a4037
+    for(const Area of WaitingAreas){
+      this.AddProp("Couch",{
+        Position:Area.Couch,
+        TargetWidth:3.2,
+        RotationY:Area.CouchRotation,
+        Tint:0x46515a,
+        TintStrength:0.07
       });
-      this.AddProp("ChairDesk",{
-        Position:new THREE.Vector3(X-Side*1.15,0,0.25),
-        TargetHeight:1.05,
-        RotationY:Side>0 ? Math.PI/2 : -Math.PI/2,
-        Tint:0x30363a
+
+      this.AddProp("Armchair",{
+        Position:Area.Chair,
+        TargetHeight:1.12,
+        RotationY:Area.ChairRotation,
+        Tint:0x46515a,
+        TintStrength:0.07
       });
 
       this.AddProp("Plant",{
-        Position:new THREE.Vector3(Side*11.6,0,8.2),
-        TargetHeight:1.25
+        Position:Area.Plant,
+        TargetHeight:1.45,
+        Collision:false
+      });
+
+      this.AddProp("FloorLamp",{
+        Position:Area.Lamp,
+        TargetHeight:1.8,
+        Collision:false,
+        Tint:0x596268,
+        TintStrength:0.05
       });
     }
 
-    this.AddProp("Bench",{
-      Position:new THREE.Vector3(-5.7,0,8.1),
-      TargetWidth:2.5,
-      RotationY:Math.PI/2,
-      Tint:0x3b4145
-    });
-    this.AddProp("Bench",{
-      Position:new THREE.Vector3(5.7,0,8.1),
-      TargetWidth:2.5,
-      RotationY:-Math.PI/2,
-      Tint:0x3b4145
-    });
-    this.AddProp("Trashcan",{
-      Position:new THREE.Vector3(10.7,0,5.2),
-      TargetHeight:0.72,
-      Tint:0x32383c
+    this.AddProp("Trash",{
+      Position:new THREE.Vector3(11.75,0,4.7),
+      TargetHeight:0.78,
+      Collision:false
     });
 
-    this.AddProp("Locker",{
-      Position:new THREE.Vector3(-11.05,0,7.05),
+    this.AddProp("Storage",{
+      Position:new THREE.Vector3(-11.15,0,6.7),
       TargetHeight:2.15,
       RotationY:Math.PI/2,
-      Tint:0x27333a
+      Tint:0x36434a,
+      TintStrength:0.08
     });
-    this.AddProp("Locker",{
-      Position:new THREE.Vector3(-7.35,0,7.05),
+
+    this.AddProp("Storage",{
+      Position:new THREE.Vector3(-11.15,0,8.65),
       TargetHeight:2.15,
-      RotationY:-Math.PI/2,
-      Tint:0x27333a
+      RotationY:Math.PI/2,
+      Tint:0x36434a,
+      TintStrength:0.08
     });
-    this.AddProp("Desk",{
-      Position:new THREE.Vector3(-9.2,0,7.05),
-      TargetWidth:2.8,
-      Tint:0x253139
+
+    this.AddProp("ReceptionDesk",{
+      Position:new THREE.Vector3(-9.0,0,7.0),
+      TargetWidth:2.75,
+      RotationY:0,
+      Tint:0x37434a,
+      TintStrength:0.08
     });
+
     this.GearDisplay = CreateBreachTool();
-    this.GearDisplay.position.set(-9.2,1.02,7.05);
+    this.GearDisplay.position.set(-9.0,1.02,7.0);
     this.GearDisplay.rotation.y = Math.PI/2;
-    this.GearDisplay.scale.setScalar(1.35);
+    this.GearDisplay.scale.setScalar(1.15);
     this.Scene.add(this.GearDisplay);
 
-    const Van = this.AddProp("Van",{
+    const GetawayCar = this.AddProp("GetawayCar",{
       Position:this.VanPosition.clone(),
-      TargetDepth:4.6,
+      TargetWidth:4.8,
+      TargetDepth:2.1,
       RotationY:Math.PI/2,
-      Tint:0x244355
+      Tint:0x263d4e,
+      TintStrength:0.10
     });
-    Van.userData.GetawayVehicle = true;
+    GetawayCar.userData.GetawayVehicle = true;
 
     const LootPositions = [
       [-4.2,-9.25],
@@ -249,13 +279,14 @@ export class BankWorld{
     ];
 
     for(const [X,Z] of LootPositions){
-      const Lockbox = this.AddProp("Lockbox",{
+      const LootBox = this.AddProp("LootBox",{
         Position:new THREE.Vector3(X,0,Z),
-        TargetWidth:0.72,
-        Tint:0x445848
+        TargetWidth:0.82,
+        Tint:0x4b6650,
+        TintStrength:0.10
       });
-      Lockbox.userData.Collected = false;
-      this.Loot.push(Lockbox);
+      LootBox.userData.Collected = false;
+      this.Loot.push(LootBox);
     }
   }
 }
