@@ -6,21 +6,21 @@ export class VaultSystem{
     this.Scene = Scene;
     this.Collision = Collision;
     this.DoorModel = null;
-    this.MaxIntegrity = 12;
-    this.Integrity = this.MaxIntegrity;
     this.Open = false;
-    this.LastPulse = -99;
+    this.Progress = 0;
+    this.RequiredSteps = 3;
     this.AlarmTriggered = false;
+    this.InteractionPoint = new THREE.Vector3(0,0,-3.45);
     this.DoorCollider = this.Collision.AddBox(
       0,
-      -5.72,
-      5.1,
-      0.46,
-      "VaultDoor",
+      -4,
+      2.2,
+      0.4,
+      "SecurityGate",
       {
-        Id:"VaultDoor",
+        Id:"SecurityGate",
         MinY:0,
-        MaxY:4.3
+        MaxY:3.05
       }
     );
   }
@@ -48,8 +48,8 @@ export class VaultSystem{
           Intensity:Number(Material.emissiveIntensity) || 0
         });
 
-        Material.emissive.setHex(0x8f3a18);
-        Material.emissiveIntensity = 0.72;
+        Material.emissive.setHex(0x1e8a72);
+        Material.emissiveIntensity = 0.9;
       }
     });
 
@@ -58,14 +58,14 @@ export class VaultSystem{
         Entry.Material.emissive.copy(Entry.Emissive);
         Entry.Material.emissiveIntensity = Entry.Intensity;
       }
-    },80);
+    },110);
   }
 
   OpenDoor(){
     if(this.Open) return;
 
     this.Open = true;
-    this.Integrity = 0;
+    this.Progress = this.RequiredSteps;
     this.Collision.Remove(this.DoorCollider);
 
     if(this.DoorModel){
@@ -73,40 +73,26 @@ export class VaultSystem{
     }
   }
 
-  Pulse(Player){
-    const Now = performance.now()/1000;
+  UpdateInteraction(Player,Ui,Enabled){
+    if(this.Open || !Enabled) return false;
 
-    if(Now-this.LastPulse < GameConfig.BreachCooldown){
-      return {Fired:false};
-    }
+    const Distance = Player.Position.distanceTo(this.InteractionPoint);
 
-    this.LastPulse = Now;
+    if(Distance > 1.7) return false;
 
-    if(this.Open || !this.DoorModel){
-      return {Fired:true,Hit:false};
-    }
+    Ui.SetPrompt("E  OVERRIDE SECURITY GATE");
 
-    const Ray = Player.GetAimRay();
-    const Raycaster = new THREE.Raycaster(Ray.Origin,Ray.Direction,0,25);
-    const Hits = Raycaster.intersectObject(this.DoorModel,true);
+    if(!Player.ConsumeInteract()) return false;
 
-    if(!Hits.length){
-      return {Fired:true,Hit:false};
-    }
-
+    this.Progress = Math.min(this.RequiredSteps,this.Progress+1);
     this.AlarmTriggered = true;
-    this.Integrity = Math.max(0,this.Integrity-1);
     this.FlashDoor();
 
-    if(this.Integrity <= 0){
+    if(this.Progress >= this.RequiredSteps){
       this.OpenDoor();
     }
 
-    return {
-      Fired:true,
-      Hit:true,
-      Point:Hits[0].point.clone()
-    };
+    return true;
   }
 
   Update(){
@@ -121,7 +107,7 @@ export class VaultSystem{
   }
 
   RemainingFraction(){
-    return this.Integrity/this.MaxIntegrity;
+    return 1-this.Progress/this.RequiredSteps;
   }
 }
 
@@ -133,29 +119,19 @@ export class GearSystem{
   }
 
   Update(Player,Ui){
+    if(this.Equipped) return false;
+
     const Distance = Player.Position.distanceTo(this.Position);
 
-    if(!this.Equipped && Distance < 2.1){
-      Ui.SetPrompt("E  TAKE BREACH TOOL");
+    if(Distance > 1.65) return false;
 
-      if(Player.ConsumeInteract()){
-        this.Equipped = true;
-        if(this.World.GearDisplay) this.World.GearDisplay.visible = false;
-        Player.EquipBreachTool(this.World.CreateBreachGear());
-        Ui.SetObjective("Breach the vault surface.");
-      }
+    Ui.SetPrompt("E  GET ACCESS DEVICE");
 
-      return;
-    }
+    if(!Player.ConsumeInteract()) return false;
 
-    if(!this.Equipped){
-      Player.ConsumeInteract();
-      return;
-    }
-
-    if(Player.Position.z < 1.5){
-      Ui.SetPrompt("LEFT CLICK  BREACH PULSE");
-    }
+    this.Equipped = true;
+    Ui.SetObjective("Reach the security gate.");
+    return true;
   }
 }
 
@@ -225,13 +201,13 @@ export class PoliceSystem{
   }
 
   RouteTarget(Unit,Player){
-    if(Unit.Root.position.z > 12.3 && Player.Position.z < 11.5){
-      return new THREE.Vector3(0,0,13.3);
+    if(Unit.Root.position.z > 10.4 && Player.Position.z < 9.6){
+      return new THREE.Vector3(0,0,10.8);
     }
 
-    if(Unit.Root.position.z > -6.15 && Player.Position.z < -6.2){
+    if(Unit.Root.position.z > -4.2 && Player.Position.z < -4.25){
       const PassageX = this.Vault.GetPassageX();
-      return new THREE.Vector3(Number.isFinite(PassageX) ? PassageX : 0,0,-5.35);
+      return new THREE.Vector3(Number.isFinite(PassageX) ? PassageX : 0,0,-3.55);
     }
 
     return Player.Position.clone();
@@ -323,7 +299,7 @@ export class GameUi{
     if(Active){
       this.ResponseText.textContent = Seconds > 0
         ? "RESPONSE WAVE IN "+Seconds.toFixed(1)
-        : "POLICE ON SCENE";
+        : "RESPONSE TEAM ON SCENE";
     }
   }
 
