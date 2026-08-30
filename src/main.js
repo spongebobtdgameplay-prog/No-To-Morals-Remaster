@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v011";
-import {CollisionWorld} from "./collision.js?v=20260830-v011";
-import {CharacterAssets} from "./assets.js?v=20260830-v011";
-import {BankWorld} from "./world.js?v=20260830-v011";
-import {PlayerController} from "./player.js?v=20260830-v011";
-import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-v011";
+import {GameConfig} from "./config.js?v=20260830-v012";
+import {CollisionWorld} from "./collision.js?v=20260830-v012";
+import {CharacterAssets} from "./assets.js?v=20260830-v012";
+import {BankWorld} from "./world.js?v=20260830-v012";
+import {PlayerController} from "./player.js?v=20260830-v012";
+import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-v012";
 
 const Canvas = document.getElementById("GameCanvas");
 const Renderer = new THREE.WebGLRenderer({canvas:Canvas,antialias:true,powerPreference:"high-performance"});
@@ -101,6 +101,7 @@ async function Boot(){
 
     const Robber = Assets.Create("Robber");
     Player.AttachCharacter(Robber,Scene);
+    Player.AttachLootBag(Assets.CreateLootBag());
     Ui.SetReady();
   }catch(Error){
     console.error("Boot failed.",Error);

@@ -66,16 +66,43 @@ function StyleCharacter(Model,Role){
       const Materials = Array.isArray(Object.material) ? Object.material : [Object.material];
       for(const Material of Materials){
         const Name = String(Material?.name || "").toLowerCase();
-        if(/skin|eye|eyebrow|hair/.test(Name) && Material?.color){
-          Material.color.setHex(0x07090b);
-          Material.roughness = 0.82;
-        }
+        if(!Material?.color) continue;
+        if(/skin/.test(Name)) Material.color.setHex(0x090b0d);
+        else if(/eye/.test(Name)) Material.color.setHex(0xc8cbd0);
+        else if(/eyebrow|hair/.test(Name)) Material.color.setHex(0x050607);
+        else if(/purple|lightblue|white/.test(Name)) Material.color.setHex(
+          /purple/.test(Name) ? 0x101419 : /lightblue/.test(Name) ? 0x232a31 : 0x171b20
+        );
+        Material.roughness = Math.max(Number(Material.roughness) || 0,0.78);
       }
     }
 
     Object.castShadow = true;
     Object.receiveShadow = true;
     Object.frustumCulled = false;
+  });
+}
+
+function StyleLootBag(Model){
+  Model.traverse(Object=>{
+    if(!Object.isMesh || !Object.material) return;
+    const WasArray = Array.isArray(Object.material);
+    const Materials = WasArray ? Object.material : [Object.material];
+    const Styled = Materials.map(Material=>{
+      const Clone = Material.clone();
+      const Name = String(Clone.name || "").toLowerCase();
+      if(Clone.color){
+        if(/gold/.test(Name)) Clone.color.setHex(0xb08a3f);
+        else if(/black/.test(Name)) Clone.color.setHex(0x090b0e);
+        else Clone.color.setHex(0x141a20);
+      }
+      if("roughness" in Clone) Clone.roughness = /gold/.test(Name) ? 0.4 : 0.86;
+      if("metalness" in Clone) Clone.metalness = /gold/.test(Name) ? 0.45 : 0.02;
+      return Clone;
+    });
+    Object.material = WasArray ? Styled : Styled[0];
+    Object.castShadow = true;
+    Object.receiveShadow = true;
   });
 }
 
@@ -118,7 +145,7 @@ class ClipAnimator{
     this.Current = null;
 
     this.Actions = {
-      Idle:this.CreateAction(FindClip(Animations,["Idle_Gun","Idle","Stand"])),
+      Idle:this.CreateAction(FindClip(Animations,["Idle_Neutral","Idle","Stand"])),
       Walk:this.CreateAction(FindClip(Animations,["Walk","Walking"])),
       Run:this.CreateAction(FindClip(Animations,["Run","Run_Shoot","Running"]))
     };
@@ -219,14 +246,15 @@ export class CharacterAssets{
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260830-v011");
+    const Response = await fetch("assets/models/manifest.json?v=20260830-v012");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
 
     this.Manifest = await Response.json();
 
     await Promise.all([
       this.LoadOne("robber"),
-      this.LoadOne("police")
+      this.LoadOne("police"),
+      this.LoadOne("lootBag")
     ]);
   }
 
@@ -270,10 +298,17 @@ export class CharacterAssets{
     ]);
 
     const HasGenericMovement = Boolean(
-      FindClip(Source.Animations,["Idle_Gun","Idle","Stand"]) &&
+      FindClip(Source.Animations,["Idle_Neutral","Idle","Stand"]) &&
       FindClip(Source.Animations,["Walk","Walking"]) &&
       FindClip(Source.Animations,["Run","Run_Shoot","Running"])
     );
+
+    const BagAnchor = FindBone(Model,[
+      /chest/,
+      /torso/,
+      /spine/,
+      /abdomen/
+    ]);
 
     return {
       Model,
@@ -281,7 +316,18 @@ export class CharacterAssets{
         ? new ClipAnimator(Model,Source.Animations)
         : new BoneAnimator(Model),
       RightHand,
+      BagAnchor,
       FacingOffset:-Math.PI/2
     };
+  }
+
+  CreateLootBag(){
+    const Source = this.Models.get("lootBag");
+    if(!Source?.Scene) throw new Error("Required duffel bag model is unavailable.");
+    const Model = Source.Scene.clone(true);
+    StyleLootBag(Model);
+    Model.scale.setScalar(0.18);
+    Model.name = "RobberLootDuffel";
+    return Model;
   }
 }

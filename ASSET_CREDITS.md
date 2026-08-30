@@ -12,6 +12,17 @@ The player and response characters now come from one visually matched character 
 
 The player uses the adult-proportioned hoodie character from the same CC0 modular-men pack, with accessory nodes removed at runtime. The runtime applies dark modern clothing and concealed-face material treatment, and uses its imported idle, walk, and run animation clips.
 
+## Loot duffel
+
+- Creator: accidentallyc
+- Model: `Duffel Bag`
+- Source: https://poly.pizza/m/rysPhwuIP4
+- License: CC0 1.0
+- Local file: `assets/models/duffel-bag.glb`
+- Mesh inspection: 1,376 triangles, separate body, handle, handle straps, and zipper meshes
+
+The imported bag is attached to the robber's chest/torso bone and uses restrained per-axis fullness changes as loot is collected.
+
 ## Downtown City environment
 
 The bank exterior, interior shell, sidewalk, road, and surrounding buildings use one coherent environment source: **Quaternius Downtown City MegaKit**.

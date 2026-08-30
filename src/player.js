@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v011";
-import {LimbContactSystem} from "./animation-contact.js?v=20260830-v011";
+import {GameConfig} from "./config.js?v=20260830-v012";
+import {LimbContactSystem} from "./animation-contact.js?v=20260830-v012";
 
 function ExpAlpha(Delta,Rate){
   return 1-Math.exp(-Rate*Delta);
@@ -31,6 +31,7 @@ export class PlayerController{
     this.Animator = null;
     this.LimbContact = null;
     this.RightHand = null;
+    this.BagAnchor = null;
     this.ModelFacingOffset = 0;
     this.ToolVisual = null;
     this.ToolKick = 0;
@@ -52,6 +53,9 @@ export class PlayerController{
     this.CameraInitialized = false;
     this.LootBag = null;
     this.LootBagBaseScale = new THREE.Vector3(1,1,1);
+    this.LootBagBasePosition = new THREE.Vector3();
+    this.LootBagAnchorWorld = new THREE.Vector3();
+    this.LootBagFullness = 0;
 
     this.OnKeyDown = Event=>{
       if(["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight"].includes(Event.code)){
@@ -107,6 +111,7 @@ export class PlayerController{
     this.Character = CharacterData.Model;
     this.Animator = CharacterData.Animator;
     this.RightHand = CharacterData.RightHand || null;
+    this.BagAnchor = CharacterData.BagAnchor || null;
     this.ModelFacingOffset = CharacterData.FacingOffset || 0;
     this.LimbContact = null;
     this.CharacterRoot.add(this.Character);
@@ -119,19 +124,38 @@ export class PlayerController{
     this.LootBag = Bag;
     this.LootBagBaseScale.copy(Bag.scale);
     this.CharacterRoot.add(Bag);
+    Bag.position.set(-0.46,0.92,0.06);
+    Bag.rotation.set(0.08,Math.PI/2,-0.08);
+    this.LootBagBasePosition.copy(Bag.position);
     this.UpdateLootBag(0);
+    this.UpdateLootBagTransform();
   }
 
   UpdateLootBag(Progress){
     if(!this.LootBag) return;
     const Fullness = THREE.MathUtils.clamp(Progress,0,1);
-    this.LootBag.position.set(-0.34,1.06,0.18);
-    this.LootBag.rotation.set(0.08,-0.24,0.16);
+    this.LootBagFullness = Fullness;
     this.LootBag.scale.set(
-      this.LootBagBaseScale.x*(0.9+Fullness*0.1),
+      this.LootBagBaseScale.x*(0.94+Fullness*0.06),
       this.LootBagBaseScale.y*(0.72+Fullness*0.28),
-      this.LootBagBaseScale.z*(0.86+Fullness*0.14)
+      this.LootBagBaseScale.z*(0.8+Fullness*0.2)
     );
+  }
+
+  UpdateLootBagTransform(){
+    if(!this.LootBag) return;
+    if(this.BagAnchor){
+      this.CharacterRoot.updateMatrixWorld(true);
+      this.BagAnchor.getWorldPosition(this.LootBagAnchorWorld);
+      this.CharacterRoot.worldToLocal(this.LootBagAnchorWorld);
+      this.LootBag.position.copy(this.LootBagAnchorWorld);
+      this.LootBag.position.x -= 0.46;
+      this.LootBag.position.y -= 0.37-this.LootBagFullness*0.018;
+      this.LootBag.position.z += 0.06;
+    }else{
+      this.LootBag.position.copy(this.LootBagBasePosition);
+      this.LootBag.position.y += this.LootBagFullness*0.018;
+    }
   }
 
   EquipBreachTool(Tool){
@@ -208,7 +232,7 @@ export class PlayerController{
 
     this.MoveForward.set(Math.sin(this.Yaw),0,Math.cos(this.Yaw));
 
-    this.MoveRight.crossVectors(this.UpVector,this.MoveForward).normalize();
+    this.MoveRight.crossVectors(this.MoveForward,this.UpVector).normalize();
 
     this.MoveDirection.set(0,0,0)
       .addScaledVector(this.MoveForward,ForwardInput)
@@ -229,7 +253,7 @@ export class PlayerController{
     }
 
     const Speed = Moving ? (Sprinting ? GameConfig.SprintSpeed : GameConfig.WalkSpeed) : 0;
-    this.LastSpeed = THREE.MathUtils.lerp(this.LastSpeed,Speed,ExpAlpha(Delta,10));
+    this.LastSpeed = Speed;
 
     const HorizontalDelta = this.MoveDirection.clone().multiplyScalar(Speed*Delta);
     const Result = this.Collision.ResolveMove(
@@ -291,7 +315,7 @@ export class PlayerController{
       const TargetFacing = Math.atan2(this.MoveDirection.x,this.MoveDirection.z);
       const Difference = NormalizeAngle(TargetFacing-this.LastFacing);
       TurnRate = Difference/Math.max(Delta,0.001);
-      this.LastFacing += Difference*ExpAlpha(Delta,16);
+      this.LastFacing += Difference*ExpAlpha(Delta,22);
     }
 
     this.CharacterRoot.position.copy(this.Position);
@@ -299,6 +323,7 @@ export class PlayerController{
     this.LimbContact?.Restore();
     this.Animator?.Update(Delta,this.LastSpeed,THREE.MathUtils.clamp(TurnRate,-4,4));
     this.LimbContact?.Apply();
+    this.UpdateLootBagTransform();
     this.UpdateToolVisual(Delta);
 
     const RawTarget = this.CameraLookTarget.set(
@@ -320,7 +345,7 @@ export class PlayerController{
       Math.cos(this.Yaw)*Math.cos(this.Pitch)
     ).normalize();
 
-    const ViewRight = new THREE.Vector3(Math.cos(this.Yaw),0,-Math.sin(this.Yaw));
+    const ViewRight = new THREE.Vector3(-Math.cos(this.Yaw),0,Math.sin(this.Yaw));
 
     const DesiredCamera = this.CameraTarget.clone()
       .addScaledVector(ViewForward,-this.CameraDistance)

@@ -13,5 +13,12 @@
     "sourcePack": "Ultimate Modular Men Pack",
     "license": "CC0-1.0",
     "mirror": "nixocode/vietnam-65-lanes-of-war"
+  },
+  "lootBag": {
+    "url": "assets/models/duffel-bag.glb",
+    "author": "accidentallyc",
+    "source": "https://poly.pizza/m/rysPhwuIP4",
+    "license": "CC0-1.0",
+    "triangles": 1376
   }
 }
