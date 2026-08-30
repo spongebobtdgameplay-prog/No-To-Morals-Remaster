@@ -27,7 +27,9 @@ const ModelPaths = Object.freeze({
   CityBuildingC:JgBase+"kaykit-city-builder/building_C_withoutBase.glb",
   Streetlight:JgBase+"kaykit-city-builder/streetlight.glb",
   Dumpster:JgBase+"kaykit-city-builder/dumpster.glb",
-  Hydrant:JgBase+"kaykit-city-builder/firehydrant.glb"
+  Hydrant:JgBase+"kaykit-city-builder/firehydrant.glb",
+  VaultDoor:JgBase+"quaternius-modular-scifi/Door_DarkMetal.glb",
+  BreachGear:JgBase+"kaykit-adventurers/smokebomb.glb"
 });
 
 function CloneMaterial(Material,Tint,TintStrength){
