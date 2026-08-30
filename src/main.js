@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v01-meshopt1";
-import {CollisionWorld} from "./collision.js?v=20260830-v01-meshopt1";
-import {CharacterAssets} from "./assets.js?v=20260830-v01-meshopt1";
-import {BankWorld} from "./world.js?v=20260830-v01-meshopt1";
-import {PlayerController} from "./player.js?v=20260830-v01-meshopt1";
-import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-v01-meshopt1";
+import {GameConfig} from "./config.js?v=20260830-realworld1";
+import {CollisionWorld} from "./collision.js?v=20260830-realworld1";
+import {CharacterAssets} from "./assets.js?v=20260830-realworld1";
+import {BankWorld} from "./world.js?v=20260830-realworld1";
+import {PlayerController} from "./player.js?v=20260830-realworld1";
+import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-realworld1";
 
 const Canvas = document.getElementById("GameCanvas");
 const Renderer = new THREE.WebGLRenderer({canvas:Canvas,antialias:true,powerPreference:"high-performance"});
@@ -50,24 +50,25 @@ function UpdateObjective(){
 
   if(!Vault.IsPassable()){
     const Percent = Math.round((1-Vault.RemainingFraction())*100);
-    Ui.SetObjective("Open a low passage through the vault. "+Percent+"% fractured.");
+    Ui.SetObjective("Breach the vault door. "+Percent+"% damaged.");
     return;
   }
 
-  if(Loot.Count < 1){
-    Ui.SetObjective("Enter the vault and take loot.");
+  if(Loot.Count < GameConfig.RequiredLoot){
+    const Needed = GameConfig.RequiredLoot-Loot.Count;
+    Ui.SetObjective("Take "+Needed+" more loot crate"+(Needed===1?".":"s."));
     return;
   }
 
-  Ui.SetObjective("Reach the getaway van.");
+  Ui.SetObjective("Reach the street-side escape point.");
 }
 
 function CheckEscape(){
-  if(Loot.Count < 1) return false;
+  if(Loot.Count < GameConfig.RequiredLoot) return false;
 
   const FlatPlayer = new THREE.Vector2(Player.Position.x,Player.Position.z);
-  const FlatVan = new THREE.Vector2(World.VanPosition.x,World.VanPosition.z);
-  return FlatPlayer.distanceTo(FlatVan) < 2.7;
+  const FlatEscape = new THREE.Vector2(World.EscapePosition.x,World.EscapePosition.z);
+  return FlatPlayer.distanceTo(FlatEscape) < 2.7;
 }
 
 function Finish(Win){
@@ -91,6 +92,12 @@ async function Boot(){
       Assets.Load(),
       World.LoadModels()
     ]);
+
+    if(!World.VaultDoorModel){
+      throw new Error("Vault door model did not initialize.");
+    }
+
+    Vault.AttachDoor(World.VaultDoorModel);
 
     const Robber = Assets.Create("Robber");
     Player.AttachCharacter(Robber,Scene);
