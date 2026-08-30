@@ -24,6 +24,8 @@ body{font-family:var(--mono);color:var(--text)}
 .Panel span{display:block;color:var(--muted);font-size:10px;letter-spacing:.16em;margin-bottom:4px}
 .Panel strong{font-size:13px;letter-spacing:.07em}
 .Brand strong{color:var(--amber)}
+.Brand{min-width:132px}
+.Brand .VersionTag{display:block;margin-top:5px;color:#a8b2ba;font-size:9px;letter-spacing:.12em;font-weight:700}
 .Objective{min-width:300px;text-align:center}
 .Stats strong{color:var(--green)}
 .Controls{max-width:620px;color:#b4bec5;font-size:10px;line-height:1.5;letter-spacing:.05em}
