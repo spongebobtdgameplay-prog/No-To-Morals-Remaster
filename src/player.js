@@ -180,7 +180,15 @@ export class PlayerController{
       RightInput /= InputLength;
     }
 
-    this.MoveForward.set(Math.sin(this.Yaw),0,Math.cos(this.Yaw)).normalize();
+    this.Camera.getWorldDirection(this.MoveForward);
+    this.MoveForward.y = 0;
+
+    if(this.MoveForward.lengthSq() <= 0.000001){
+      this.MoveForward.set(Math.sin(this.Yaw),0,Math.cos(this.Yaw));
+    }else{
+      this.MoveForward.normalize();
+    }
+
     this.MoveRight.crossVectors(this.UpVector,this.MoveForward).normalize();
 
     this.MoveDirection.set(0,0,0)
