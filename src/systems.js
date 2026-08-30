@@ -423,9 +423,19 @@ export class GameUi{
   SetStamina(Value){ this.StaminaFill.style.width = THREE.MathUtils.clamp(Value,0,100)+"%"; }
 
   SetReady(){
+    this.ErrorPanel.classList.add("Hidden");
     this.StartButton.disabled = false;
     this.StartButton.textContent = "START THE JOB";
     this.BootStatus.textContent = "Ready.";
+  }
+
+  SetBootFailure(Error){
+    const Message = String(Error?.message || Error || "Unknown loading error.");
+    this.StartButton.disabled = true;
+    this.StartButton.textContent = "LOAD FAILED";
+    this.BootStatus.textContent = "Required game models failed to load.";
+    this.ErrorPanel.textContent = Message;
+    this.ErrorPanel.classList.remove("Hidden");
   }
 
   Start(){
