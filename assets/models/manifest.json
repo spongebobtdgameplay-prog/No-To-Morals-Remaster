@@ -1,16 +1,16 @@
 {
   "robber": {
-    "url": "https://raw.githubusercontent.com/euuuuuuan/fatal-funnel-public/main/packages/renderer/assets/models/quaternius-men/swat.glb",
+    "url": "https://raw.githubusercontent.com/Seyamalam/blood-league-kickoff/main/public/assets/vendor/quaternius/night-striker.glb",
     "author": "Quaternius",
-    "sourcePack": "Ultimate Modular Men Pack",
+    "sourcePack": "Universal Base Characters",
     "license": "CC0-1.0",
-    "mirror": "euuuuuuan/fatal-funnel-public"
+    "mirror": "Seyamalam/blood-league-kickoff"
   },
   "police": {
-    "url": "https://raw.githubusercontent.com/euuuuuuan/fatal-funnel-public/main/packages/renderer/assets/models/quaternius-men/swat.glb",
+    "url": "https://raw.githubusercontent.com/Seyamalam/blood-league-kickoff/main/public/assets/vendor/quaternius/night-striker.glb",
     "author": "Quaternius",
-    "sourcePack": "Ultimate Modular Men Pack",
+    "sourcePack": "Universal Base Characters",
     "license": "CC0-1.0",
-    "mirror": "euuuuuuan/fatal-funnel-public"
+    "mirror": "Seyamalam/blood-league-kickoff"
   }
 }
