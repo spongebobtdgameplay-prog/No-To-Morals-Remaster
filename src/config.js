@@ -1,6 +1,8 @@
 export const GameConfig = Object.freeze({
-  PlayerRadius: 0.34,
+  PlayerRadius: 0.28,
   PlayerColliderHeight: 1.68,
+  MaxStepHeight: 0.32,
+  CollisionSkin: 0.008,
   WalkSpeed: 4.1,
   SprintSpeed: 6.6,
   JumpSpeed: 5.4,
