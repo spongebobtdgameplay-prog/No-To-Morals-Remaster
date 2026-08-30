@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+import {MeshoptDecoder} from "three/addons/libs/meshopt_decoder.module.js";
 
 const ModelPaths = Object.freeze({
   ReceptionDesk:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/desk_alt.glb",
@@ -72,15 +73,22 @@ function FitModel(Model,Options){
 export class PropLibrary{
   constructor(){
     this.Loader = new GLTFLoader();
+    this.Loader.setMeshoptDecoder(MeshoptDecoder);
     this.Sources = new Map();
   }
 
   async Load(){
     const Loaded = await Promise.all(Object.entries(ModelPaths).map(async ([Key,Path])=>{
-      const Gltf = await this.Loader.loadAsync(Path);
-      return [Key,Gltf.scene];
+      try{
+        const Gltf = await this.Loader.loadAsync(Path);
+        if(!Gltf?.scene) throw new Error("Loaded GLB has no scene.");
+        return [Key,Gltf.scene];
+      }catch(Error){
+        throw new Error("Environment model "+Key+" failed to load: "+String(Error?.message || Error));
+      }
     }));
 
+    this.Sources.clear();
     for(const [Key,Scene] of Loaded){
       this.Sources.set(Key,Scene);
     }
