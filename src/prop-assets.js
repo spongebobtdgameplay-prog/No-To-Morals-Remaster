@@ -2,36 +2,44 @@ import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 
 const ModelPaths = Object.freeze({
-  Desk:"assets/models/kenney-furniture/desk.glb",
-  ChairDesk:"assets/models/kenney-furniture/chairDesk.glb",
-  Locker:"assets/models/kenney-furniture/bookcaseClosedDoors.glb",
-  Monitor:"assets/models/kenney-furniture/computerScreen.glb",
-  Keyboard:"assets/models/kenney-furniture/computerKeyboard.glb",
-  Plant:"assets/models/kenney-furniture/pottedPlant.glb",
-  Trashcan:"assets/models/kenney-furniture/trashcan.glb",
-  Lockbox:"assets/models/kenney-furniture/cardboardBoxClosed.glb",
-  Bench:"assets/models/kenney-furniture/benchCushionLow.glb",
-  Doorway:"assets/models/kenney-furniture/doorwayOpen.glb",
-  Van:"assets/models/kenney-car/van.glb"
+  ReceptionDesk:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/desk_alt.glb",
+  OfficeChair:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/chair_blue.glb",
+  Storage:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/bookcase.glb",
+  Monitor:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/monitor.glb",
+  Laptop:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/laptop.glb",
+  Plant:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/plant_monstera.glb",
+  Trash:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/trash.glb",
+  Couch:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/couch.glb",
+  Armchair:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/armchair.glb",
+  FloorLamp:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/floor_lamp.glb",
+  LootBox:"https://raw.githubusercontent.com/sion-rgb/tactical-slash/main/assets/environment/dungeon_crate.glb",
+  GetawayCar:"https://raw.githubusercontent.com/halcyon-video/halcyon-video/master/public/models/car_sedan.glb"
 });
 
-function CloneMaterial(Material,Tint){
+function CloneMaterial(Material,Tint,TintStrength){
   const Clone = Material.clone();
   if(Tint !== null && Tint !== undefined && Clone.color){
-    Clone.color.lerp(new THREE.Color(Tint),0.32);
+    Clone.color.lerp(new THREE.Color(Tint),THREE.MathUtils.clamp(TintStrength,0,1));
+  }
+  if("roughness" in Clone && Number.isFinite(Clone.roughness)){
+    Clone.roughness = Math.max(0.36,Clone.roughness);
   }
   return Clone;
 }
 
-function PrepareModel(Model,Tint){
+function PrepareModel(Model,Options){
+  const Tint = Options.Tint;
+  const TintStrength = Number.isFinite(Options.TintStrength) ? Options.TintStrength : 0.12;
+
   Model.traverse(Object=>{
     if(!Object.isMesh) return;
-    Object.castShadow = true;
-    Object.receiveShadow = true;
+    Object.castShadow = Options.CastShadow !== false;
+    Object.receiveShadow = Options.ReceiveShadow !== false;
+
     if(Array.isArray(Object.material)){
-      Object.material = Object.material.map(Material=>CloneMaterial(Material,Tint));
+      Object.material = Object.material.map(Material=>CloneMaterial(Material,Tint,TintStrength));
     }else if(Object.material){
-      Object.material = CloneMaterial(Object.material,Tint);
+      Object.material = CloneMaterial(Object.material,Tint,TintStrength);
     }
   });
 }
@@ -68,10 +76,14 @@ export class PropLibrary{
   }
 
   async Load(){
-    await Promise.all(Object.entries(ModelPaths).map(async ([Key,Path])=>{
+    const Loaded = await Promise.all(Object.entries(ModelPaths).map(async ([Key,Path])=>{
       const Gltf = await this.Loader.loadAsync(Path);
-      this.Sources.set(Key,Gltf.scene);
+      return [Key,Gltf.scene];
     }));
+
+    for(const [Key,Scene] of Loaded){
+      this.Sources.set(Key,Scene);
+    }
   }
 
   Create(Key,Options={}){
@@ -79,7 +91,7 @@ export class PropLibrary{
     if(!Source) throw new Error("Missing loaded prop model: "+Key);
 
     const Model = Source.clone(true);
-    PrepareModel(Model,Options.Tint);
+    PrepareModel(Model,Options);
     FitModel(Model,Options);
 
     const Root = new THREE.Group();
