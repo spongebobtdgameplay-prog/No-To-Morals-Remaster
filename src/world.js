@@ -113,17 +113,23 @@ export class BankWorld{
     this.Scene.add(RoadStripe);
   }
 
-  AddProp(Key,Options){
+  AddProp(Key,Options={}){
     const Root = this.Props.Create(Key,Options);
     this.Scene.add(Root);
-    return Root;
-  }
+    Root.updateWorldMatrix(true,true);
 
-  AddCollider(X,Z,Width,Depth,Height,Type){
-    return this.Collision.AddBox(X,Z,Width,Depth,Type,{
-      MinY:0,
-      MaxY:Height
-    });
+    if(this.Collision && Key !== "Doorway" && Options.Collision !== false){
+      Root.userData.Collision = this.Collision.AddModel(
+        Root,
+        Options.CollisionType || "Prop:"+Key,
+        {
+          CameraBlock:Options.CameraBlock !== false,
+          Id:Options.ColliderId
+        }
+      );
+    }
+
+    return Root;
   }
 
   async LoadModels(){
@@ -142,8 +148,6 @@ export class BankWorld{
         RotationY:Math.PI,
         Tint:0x54483c
       });
-      this.AddCollider(X,3.15,2.55,1.05,0.9,"Counter");
-
       this.AddProp("Monitor",{
         Position:new THREE.Vector3(X,0.86,3.02),
         TargetHeight:0.52,
@@ -174,8 +178,6 @@ export class BankWorld{
         RotationY:Side>0 ? -Math.PI/2 : Math.PI/2,
         Tint:0x4a4037
       });
-      this.AddCollider(X,0.25,1.1,2.5,0.9,"Desk");
-
       this.AddProp("ChairDesk",{
         Position:new THREE.Vector3(X-Side*1.15,0,0.25),
         TargetHeight:1.05,
@@ -195,16 +197,12 @@ export class BankWorld{
       RotationY:Math.PI/2,
       Tint:0x3b4145
     });
-    this.AddCollider(-5.7,8.1,0.85,2.35,0.75,"Bench");
-
     this.AddProp("Bench",{
       Position:new THREE.Vector3(5.7,0,8.1),
       TargetWidth:2.5,
       RotationY:-Math.PI/2,
       Tint:0x3b4145
     });
-    this.AddCollider(5.7,8.1,0.85,2.35,0.75,"Bench");
-
     this.AddProp("Trashcan",{
       Position:new THREE.Vector3(10.7,0,5.2),
       TargetHeight:0.72,
@@ -217,23 +215,17 @@ export class BankWorld{
       RotationY:Math.PI/2,
       Tint:0x27333a
     });
-    this.AddCollider(-11.05,7.05,0.62,1.25,2.15,"GearLocker");
-
     this.AddProp("Locker",{
       Position:new THREE.Vector3(-7.35,0,7.05),
       TargetHeight:2.15,
       RotationY:-Math.PI/2,
       Tint:0x27333a
     });
-    this.AddCollider(-7.35,7.05,0.62,1.25,2.15,"GearLocker");
-
     this.AddProp("Desk",{
       Position:new THREE.Vector3(-9.2,0,7.05),
       TargetWidth:2.8,
       Tint:0x253139
     });
-    this.AddCollider(-9.2,7.05,2.55,1.05,0.9,"GearBench");
-
     this.GearDisplay = CreateBreachTool();
     this.GearDisplay.position.set(-9.2,1.02,7.05);
     this.GearDisplay.rotation.y = Math.PI/2;
@@ -242,7 +234,7 @@ export class BankWorld{
 
     const Van = this.AddProp("Van",{
       Position:this.VanPosition.clone(),
-      TargetWidth:4.6,
+      TargetDepth:4.6,
       RotationY:Math.PI/2,
       Tint:0x244355
     });
