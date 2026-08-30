@@ -62,6 +62,17 @@ function StyleCharacter(Model,Role){
       Object.material = CloneMaterial(Object.material,Role);
     }
 
+    if(Role === "Robber"){
+      const Materials = Array.isArray(Object.material) ? Object.material : [Object.material];
+      for(const Material of Materials){
+        const Name = String(Material?.name || "").toLowerCase();
+        if(/skin|eye|eyebrow|hair/.test(Name) && Material?.color){
+          Material.color.setHex(0x07090b);
+          Material.roughness = 0.82;
+        }
+      }
+    }
+
     Object.castShadow = true;
     Object.receiveShadow = true;
     Object.frustumCulled = false;
