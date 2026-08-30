@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import {CreateBreachTool} from "./breach-tool.js?v=20260830-v01-models";
-import {PropLibrary} from "./prop-assets.js?v=20260830-v01-models";
+import {CreateBreachTool} from "./breach-tool.js?v=20260830-v01-meshopt1";
+import {PropLibrary} from "./prop-assets.js?v=20260830-v01-meshopt1";
 
 function Box(Scene,Collision,CenterX,CenterY,CenterZ,Width,Height,Depth,Material,Type="Solid",Options={}){
   const Mesh = new THREE.Mesh(new THREE.BoxGeometry(Width,Height,Depth),Material);
