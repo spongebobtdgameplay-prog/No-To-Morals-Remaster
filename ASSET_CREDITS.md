@@ -1,20 +1,61 @@
 # Asset Credits
 
-## Version 0.1 character model
+## Player robber
 
-The player and police now use the Quaternius Universal Base Characters model mirrored as `night-striker.glb`.
+The player now uses the rigged `Rogue_Hooded.glb` model from **KayKit Adventurers**.
+
+- Creator: Kay Lousberg
+- License: CC0 1.0
+- Runtime mirror: `Noisemaker111/jgengine`
+- Runtime path: `apps/dev/public/models/kaykit-adventurers/Rogue_Hooded.glb`
+- Embedded movement clips used by the game: `Idle`, `Walking_A`, `Running_A`
+
+The game removes fantasy weapon/accessory nodes when present and applies only a restrained dark material treatment. The embedded rig animations drive the player instead of leaving the model in a T-pose.
+
+## Police
+
+Police use the Quaternius SWAT model from the **Ultimate Modular Men Pack**.
 
 - Creator: Quaternius
-- Source pack: Universal Base Characters
 - License: CC0 1.0
-- Runtime mirror: `Seyamalam/blood-league-kickoff`
-- Runtime path: `public/assets/vendor/quaternius/night-striker.glb`
+- Runtime mirror: `euuuuuuan/fatal-funnel-public`
 
-The old SWAT character and its backpack-heavy silhouette are no longer used. Role differences are applied through material styling only.
+Backpack-style accessory nodes are removed by the runtime character loader.
+
+## Imported bank architecture
+
+The visible bank shell is no longer built from Three.js box or plane primitives.
+
+The runtime uses these CC0 modular models mirrored by `Noisemaker111/jgengine`:
+
+- `Wall_Plaster_Straight.glb` — Quaternius
+- `Wall_Plaster_Door_Flat.glb` — Quaternius
+- `Wall_Plaster_Window_Wide_Flat.glb` — Quaternius
+- `Floor_Brick.glb` — Quaternius
+- `Door_DarkMetal.glb` — Quaternius, used as the vault door
+
+The wall and floor models are instantiated as authored GLB geometry. Player collision is still handled by the project's mesh-aware collision system.
+
+## Imported street and city dressing
+
+The outside street uses the **KayKit City Builder** pack by Kay Lousberg, CC0 1.0, mirrored by `Noisemaker111/jgengine`.
+
+Models currently used:
+
+- `road_straight.glb`
+- `road_straight_crossing.glb`
+- `building_A_withoutBase.glb`
+- `building_B_withoutBase.glb`
+- `building_C_withoutBase.glb`
+- `streetlight.glb`
+- `dumpster.glb`
+- `firehydrant.glb`
+
+The previous small getaway car asset has been removed from the runtime.
 
 ## Bank office models
 
-The old Kenney furniture set was removed from the runtime and replaced with a mixed office set.
+The lobby keeps a mixed imported office set.
 
 ### CC0 models
 
@@ -36,21 +77,11 @@ Runtime mirror: `sorryhumans/roost`, under `web/public/models/office/`.
 
 Runtime mirror: `sorryhumans/roost`, under `web/public/models/office/`.
 
-## Loot crate
+## Loot and breach gear
 
-- Model: `dungeon_crate.glb`
-- Creator: Kay Lousberg / KayKit
-- Source pack: KayKit Dungeon Remastered
-- License: CC0 1.0
-- Runtime mirror: `sion-rgb/tactical-slash`
+- Loot crate: `dungeon_crate.glb` — KayKit Dungeon Remastered — Kay Lousberg — CC0 1.0 — mirror `sion-rgb/tactical-slash`
+- Breach gear visual: `smokebomb.glb` — KayKit Adventurers — Kay Lousberg — CC0 1.0 — mirror `Noisemaker111/jgengine`
 
-## Getaway vehicle
+## Runtime-only systems
 
-- Model: `car_sedan.glb`
-- Creator: Quaternius
-- License: CC0 1.0
-- Runtime mirror: `halcyon-video/halcyon-video`
-
-## Procedural runtime geometry
-
-Structural bank walls, floors, lighting, and the destructible vault surface remain runtime geometry because they are part of the gameplay and collision layout.
+Three.js still provides rendering, lighting, animation playback, raycasts, camera logic, and invisible collision math. Persistent bank walls, floors, street pieces, city buildings, the player character, the vault door, furniture, loot, and held gear are imported models rather than generated primitive meshes.
