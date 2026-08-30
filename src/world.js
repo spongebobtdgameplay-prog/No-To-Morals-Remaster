@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {PropLibrary} from "./prop-assets.js?v=20260830-downtown2";
+import {PropLibrary} from "./prop-assets.js?v=20260830-repair3";
 
 export class BankWorld{
   constructor(Scene,Collision){
@@ -8,51 +8,57 @@ export class BankWorld{
     this.Props = new PropLibrary();
     this.Loot = [];
     this.GearPosition = new THREE.Vector3(-8,0,5.6);
+    this.GearDisplay = null;
     this.VaultDoorModel = null;
     this.EscapePosition = new THREE.Vector3(9,0,12.4);
     this.PoliceSpawns = [
-      new THREE.Vector3(-10,0,23),
-      new THREE.Vector3(-3,0,24),
-      new THREE.Vector3(5,0,24),
-      new THREE.Vector3(12,0,23)
+      new THREE.Vector3(-9,0,18),
+      new THREE.Vector3(-3,0,18.5),
+      new THREE.Vector3(4,0,18.5),
+      new THREE.Vector3(10,0,18)
     ];
 
     this.BuildLighting();
   }
 
   BuildLighting(){
-    this.Scene.background = new THREE.Color(0x0b1016);
-    this.Scene.fog = new THREE.FogExp2(0x0b1016,0.01);
+    this.Scene.background = new THREE.Color(0x111820);
+    this.Scene.fog = new THREE.FogExp2(0x111820,0.0075);
 
-    const Ambient = new THREE.HemisphereLight(0xc8d8e8,0x20242a,1.7);
+    const Ambient = new THREE.AmbientLight(0xffffff,0.72);
     this.Scene.add(Ambient);
 
-    const Moon = new THREE.DirectionalLight(0xd7e4ff,2.0);
-    Moon.position.set(-14,24,18);
+    const Sky = new THREE.HemisphereLight(0xd9e8f7,0x33383f,1.65);
+    this.Scene.add(Sky);
+
+    const Moon = new THREE.DirectionalLight(0xd7e4ff,1.75);
+    Moon.position.set(-12,20,15);
     Moon.castShadow = true;
     Moon.shadow.mapSize.set(2048,2048);
-    Moon.shadow.camera.left = -34;
-    Moon.shadow.camera.right = 34;
-    Moon.shadow.camera.top = 34;
-    Moon.shadow.camera.bottom = -34;
+    Moon.shadow.camera.left = -36;
+    Moon.shadow.camera.right = 36;
+    Moon.shadow.camera.top = 36;
+    Moon.shadow.camera.bottom = -36;
     this.Scene.add(Moon);
 
-    for(const X of [-7,0,7]){
-      const LobbyLight = new THREE.PointLight(0xffdfae,1.7,13,2);
-      LobbyLight.position.set(X,2.7,3);
+    for(const X of [-8,-4,0,4,8]){
+      const LobbyLight = new THREE.PointLight(0xffe0b0,1.55,10,2);
+      LobbyLight.position.set(X,2.45,4);
       this.Scene.add(LobbyLight);
     }
 
-    const VaultLight = new THREE.PointLight(0xc5dcff,1.65,12,2);
-    VaultLight.position.set(0,2.7,-7);
-    this.Scene.add(VaultLight);
+    for(const X of [-7,0,7]){
+      const VaultLight = new THREE.PointLight(0xc9ddff,1.3,9,2);
+      VaultLight.position.set(X,2.4,-7);
+      this.Scene.add(VaultLight);
+    }
 
-    const GearLight = new THREE.PointLight(0x64d6ff,1.0,5.5,2);
-    GearLight.position.set(this.GearPosition.x,1.9,this.GearPosition.z);
+    const GearLight = new THREE.PointLight(0x5dd6ff,1.15,5,2);
+    GearLight.position.set(this.GearPosition.x,1.4,this.GearPosition.z);
     this.Scene.add(GearLight);
 
-    const EscapeLight = new THREE.PointLight(0x77ffc8,0.9,5.5,2);
-    EscapeLight.position.set(this.EscapePosition.x,1.9,this.EscapePosition.z);
+    const EscapeLight = new THREE.PointLight(0x70ffc8,0.9,5,2);
+    EscapeLight.position.set(this.EscapePosition.x,1.6,this.EscapePosition.z);
     this.Scene.add(EscapeLight);
   }
 
@@ -75,7 +81,7 @@ export class BankWorld{
     return Root;
   }
 
-  AddWallCollider(CenterX,CenterZ,Width,Depth,Type){
+  AddWallCollider(CenterX,CenterZ,Width,Depth,Type,MinY=0,MaxY=3.08){
     return this.Collision.AddBox(
       CenterX,
       CenterZ,
@@ -83,8 +89,8 @@ export class BankWorld{
       Depth,
       Type,
       {
-        MinY:0,
-        MaxY:3.05,
+        MinY,
+        MaxY,
         CameraBlock:true
       }
     );
@@ -116,6 +122,32 @@ export class BankWorld{
     }
   }
 
+  BuildCeiling(){
+    for(let X=-10;X<=10;X+=4){
+      for(let Z=-8;Z<=8;Z+=4){
+        this.AddProp("FloorTile",{
+          Position:new THREE.Vector3(X,3.08,Z),
+          RotationX:Math.PI,
+          Collision:false,
+          CastShadow:false
+        });
+      }
+    }
+
+    this.Collision.AddBox(
+      0,
+      0,
+      22,
+      20,
+      "Ceiling",
+      {
+        MinY:3.0,
+        MaxY:3.18,
+        CameraBlock:true
+      }
+    );
+  }
+
   BuildFrontFacade(){
     for(const X of [-9,-5,5,9]){
       this.AddProp("BrickWindow",{
@@ -128,12 +160,24 @@ export class BankWorld{
     this.AddPlainWallStack(2,10);
 
     this.AddProp("DoorFrame",{
-      Position:new THREE.Vector3(0,0,10),
+      Position:new THREE.Vector3(0,0,9.72),
       Collision:false
     });
 
-    this.AddWallCollider(-6,10,10,0.32,"OuterWall");
-    this.AddWallCollider(6,10,10,0.32,"OuterWall");
+    this.AddPlainWallStack(-1.15,10.85,Math.PI/2);
+    this.AddPlainWallStack(1.15,10.85,-Math.PI/2);
+
+    this.AddProp("FloorTile",{
+      Position:new THREE.Vector3(0,3.08,10.9),
+      RotationX:Math.PI,
+      Collision:false,
+      CastShadow:false
+    });
+
+    this.AddWallCollider(-6,10,10,0.34,"OuterWall");
+    this.AddWallCollider(6,10,10,0.34,"OuterWall");
+    this.AddWallCollider(-1.15,10.85,0.3,1.7,"EntranceReturn");
+    this.AddWallCollider(1.15,10.85,0.3,1.7,"EntranceReturn");
   }
 
   BuildBackFacade(){
@@ -141,7 +185,7 @@ export class BankWorld{
       this.AddPlainWallStack(X,-10,Math.PI);
     }
 
-    this.AddWallCollider(0,-10,22,0.32,"OuterWall");
+    this.AddWallCollider(0,-10,22,0.34,"OuterWall");
   }
 
   BuildSideFacades(){
@@ -157,7 +201,7 @@ export class BankWorld{
         });
       }
 
-      this.AddWallCollider(X,0,0.32,20,"OuterWall");
+      this.AddWallCollider(X,0,0.34,20,"OuterWall");
     }
   }
 
@@ -171,8 +215,8 @@ export class BankWorld{
       Collision:false
     });
 
-    this.AddWallCollider(-6.5,-4,9,0.32,"VaultWall");
-    this.AddWallCollider(6.5,-4,9,0.32,"VaultWall");
+    this.AddWallCollider(-6.5,-4,9,0.34,"VaultWall");
+    this.AddWallCollider(6.5,-4,9,0.34,"VaultWall");
   }
 
   BuildTellerArea(){
@@ -184,7 +228,7 @@ export class BankWorld{
       -4,
       2,
       6,
-      0.32,
+      0.34,
       "Counter",
       {
         MinY:0,
@@ -197,7 +241,7 @@ export class BankWorld{
       4,
       2,
       6,
-      0.32,
+      0.34,
       "Counter",
       {
         MinY:0,
@@ -205,107 +249,94 @@ export class BankWorld{
         CameraBlock:true
       }
     );
-
-    for(const X of [-6,-2,2,6]){
-      this.AddProp("MetalWindow",{
-        Position:new THREE.Vector3(X,0,1.78),
-        Collision:false
-      });
-    }
   }
 
-  BuildStreet(){
-    for(const X of [-18,-6,6,18]){
-      this.AddProp("Street2Lane",{
-        Position:new THREE.Vector3(X,-0.15,16.7),
-        RotationY:Math.PI/2,
-        Collision:false,
-        CastShadow:false
-      });
-    }
-
-    for(const X of [-10,-6,-2,2,6,10]){
+  BuildNearSidewalk(){
+    for(let X=-22;X<=22;X+=4){
       this.AddProp("FloorTile",{
         Position:new THREE.Vector3(X,-0.1,12),
         Collision:false,
         CastShadow:false
       });
     }
+  }
 
-    this.AddProp("EntranceStairs",{
-      Position:new THREE.Vector3(0,0,10.15),
-      Collision:true,
-      CollisionType:"EntranceStairs"
+  BuildRoad(){
+    for(const X of [-18,-6,6,18]){
+      this.AddProp("Street2Lane",{
+        Position:new THREE.Vector3(X,-0.15,17),
+        RotationY:Math.PI/2,
+        Collision:false,
+        CastShadow:false
+      });
+    }
+
+    this.AddProp("Manhole",{
+      Position:new THREE.Vector3(5.5,0.01,17),
+      Collision:false,
+      CastShadow:false
     });
+  }
 
-    for(const X of [-2.7,2.7]){
+  BuildFarSidewalk(){
+    for(let X=-22;X<=22;X+=4){
+      this.AddProp("FloorTile",{
+        Position:new THREE.Vector3(X,-0.1,22),
+        Collision:false,
+        CastShadow:false
+      });
+    }
+  }
+
+  BuildStreetBuildings(){
+    const Buildings = [
+      ["BuildingLarge",new THREE.Vector3(-18,0,32),Math.PI],
+      ["BuildingMedium",new THREE.Vector3(1,0,31),Math.PI],
+      ["BuildingSmall",new THREE.Vector3(14.5,0,31.3),Math.PI],
+      ["BuildingMedium",new THREE.Vector3(29,0,32),Math.PI]
+    ];
+
+    for(const [Key,Position,RotationY] of Buildings){
+      this.AddProp(Key,{
+        Position,
+        RotationY,
+        Collision:true,
+        CollisionType:"CityBuilding"
+      });
+    }
+
+    for(const X of [-10,-6,-2,2,6,10]){
       this.AddProp("Bollard",{
         Position:new THREE.Vector3(X,0,12.45),
         Collision:false
       });
     }
 
-    for(const X of [-8.3,8.3]){
+    for(const X of [-8.4,8.4]){
       this.AddProp("Planter",{
         Position:new THREE.Vector3(X,0,12),
         Collision:true,
         CollisionType:"Planter"
       });
     }
-
-    this.AddProp("Manhole",{
-      Position:new THREE.Vector3(5.5,0.01,16.7),
-      Collision:false,
-      CastShadow:false
-    });
-
-    this.AddProp("BuildingLarge",{
-      Position:new THREE.Vector3(-23,0,39),
-      RotationY:Math.PI,
-      Collision:false
-    });
-
-    this.AddProp("BuildingMedium",{
-      Position:new THREE.Vector3(-4,0,38),
-      RotationY:Math.PI,
-      Collision:false
-    });
-
-    this.AddProp("BuildingSmall",{
-      Position:new THREE.Vector3(12,0,37),
-      RotationY:Math.PI,
-      Collision:false
-    });
-
-    this.AddProp("BuildingMedium",{
-      Position:new THREE.Vector3(28,0,39),
-      RotationY:Math.PI,
-      Collision:false
-    });
-
-    for(const X of [7.8,10.2]){
-      this.AddProp("Bollard",{
-        Position:new THREE.Vector3(X,0,12.45),
-        Collision:false
-      });
-    }
   }
 
   BuildLobbyDetails(){
     this.AddProp("Planter",{
-      Position:new THREE.Vector3(-8,0,6.8),
+      Position:new THREE.Vector3(-8.7,0,7),
       Collision:true,
       CollisionType:"LobbyPlanter"
     });
 
     this.AddProp("Planter",{
-      Position:new THREE.Vector3(8,0,6.8),
+      Position:new THREE.Vector3(8.7,0,7),
       Collision:true,
       CollisionType:"LobbyPlanter"
     });
 
-    this.AddProp("Bollard",{
+    this.GearDisplay = this.AddProp("LootBox",{
       Position:new THREE.Vector3(this.GearPosition.x,0,this.GearPosition.z),
+      TargetWidth:0.58,
       Collision:false
     });
   }
@@ -336,12 +367,16 @@ export class BankWorld{
     await this.Props.Load();
 
     this.BuildFloor();
+    this.BuildCeiling();
     this.BuildFrontFacade();
     this.BuildBackFacade();
     this.BuildSideFacades();
     this.BuildVaultPartition();
     this.BuildTellerArea();
-    this.BuildStreet();
+    this.BuildNearSidewalk();
+    this.BuildRoad();
+    this.BuildFarSidewalk();
+    this.BuildStreetBuildings();
     this.BuildLobbyDetails();
     this.BuildLoot();
   }
