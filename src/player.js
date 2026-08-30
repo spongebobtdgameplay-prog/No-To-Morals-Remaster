@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-repair3";
-import {LimbContactSystem} from "./animation-contact.js?v=20260830-repair3";
+import {GameConfig} from "./config.js?v=20260830-v011";
+import {LimbContactSystem} from "./animation-contact.js?v=20260830-v011";
 
 function ExpAlpha(Delta,Rate){
   return 1-Math.exp(-Rate*Delta);
@@ -45,6 +45,13 @@ export class PlayerController{
     this.Active = false;
     this.LastFacing = Math.PI;
     this.LastSpeed = 0;
+    this.CameraTarget = new THREE.Vector3(0,GameConfig.CameraHeight,6);
+    this.CameraPosition = new THREE.Vector3(0,2.2,8);
+    this.CameraBoomDistance = GameConfig.CameraDefault;
+    this.CameraLookTarget = new THREE.Vector3();
+    this.CameraInitialized = false;
+    this.LootBag = null;
+    this.LootBagBaseScale = new THREE.Vector3(1,1,1);
 
     this.OnKeyDown = Event=>{
       if(["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight"].includes(Event.code)){
@@ -106,6 +113,25 @@ export class PlayerController{
     Scene.add(this.CharacterRoot);
     this.CharacterRoot.position.copy(this.Position);
     this.CharacterRoot.rotation.y = this.LastFacing+this.ModelFacingOffset;
+  }
+
+  AttachLootBag(Bag){
+    this.LootBag = Bag;
+    this.LootBagBaseScale.copy(Bag.scale);
+    this.CharacterRoot.add(Bag);
+    this.UpdateLootBag(0);
+  }
+
+  UpdateLootBag(Progress){
+    if(!this.LootBag) return;
+    const Fullness = THREE.MathUtils.clamp(Progress,0,1);
+    this.LootBag.position.set(-0.34,1.06,0.18);
+    this.LootBag.rotation.set(0.08,-0.24,0.16);
+    this.LootBag.scale.set(
+      this.LootBagBaseScale.x*(0.9+Fullness*0.1),
+      this.LootBagBaseScale.y*(0.72+Fullness*0.28),
+      this.LootBagBaseScale.z*(0.86+Fullness*0.14)
+    );
   }
 
   EquipBreachTool(Tool){
@@ -180,14 +206,7 @@ export class PlayerController{
       RightInput /= InputLength;
     }
 
-    this.Camera.getWorldDirection(this.MoveForward);
-    this.MoveForward.y = 0;
-
-    if(this.MoveForward.lengthSq() <= 0.000001){
-      this.MoveForward.set(Math.sin(this.Yaw),0,Math.cos(this.Yaw));
-    }else{
-      this.MoveForward.normalize();
-    }
+    this.MoveForward.set(Math.sin(this.Yaw),0,Math.cos(this.Yaw));
 
     this.MoveRight.crossVectors(this.UpVector,this.MoveForward).normalize();
 
@@ -282,11 +301,18 @@ export class PlayerController{
     this.LimbContact?.Apply();
     this.UpdateToolVisual(Delta);
 
-    const Target = new THREE.Vector3(
+    const RawTarget = this.CameraLookTarget.set(
       this.Position.x,
       this.Position.y+GameConfig.CameraHeight,
       this.Position.z
     );
+
+    if(!this.CameraInitialized){
+      this.CameraTarget.copy(RawTarget);
+      this.CameraInitialized = true;
+    }else{
+      this.CameraTarget.lerp(RawTarget,ExpAlpha(Delta,GameConfig.CameraTargetDamping));
+    }
 
     const ViewForward = new THREE.Vector3(
       Math.sin(this.Yaw)*Math.cos(this.Pitch),
@@ -296,12 +322,17 @@ export class PlayerController{
 
     const ViewRight = new THREE.Vector3(Math.cos(this.Yaw),0,-Math.sin(this.Yaw));
 
-    const DesiredCamera = Target.clone()
+    const DesiredCamera = this.CameraTarget.clone()
       .addScaledVector(ViewForward,-this.CameraDistance)
       .addScaledVector(ViewRight,GameConfig.CameraShoulder);
 
-    const SafeCamera = this.Collision.ClipSegment(Target,DesiredCamera,0.14);
-    this.Camera.position.lerp(SafeCamera,ExpAlpha(Delta,20));
-    this.Camera.lookAt(Target.clone().addScaledVector(ViewForward,2));
+    const SafeCamera = this.Collision.ClipSegment(this.CameraTarget,DesiredCamera,GameConfig.CameraCollisionPadding);
+    const DesiredBoom = SafeCamera.distanceTo(this.CameraTarget);
+    this.CameraBoomDistance = THREE.MathUtils.lerp(this.CameraBoomDistance,DesiredBoom,ExpAlpha(Delta,GameConfig.CameraBoomDamping));
+    const CameraDirection = DesiredCamera.sub(this.CameraTarget).normalize();
+    const SmoothedCamera = this.CameraTarget.clone().addScaledVector(CameraDirection,this.CameraBoomDistance);
+    this.CameraPosition.lerp(SmoothedCamera,ExpAlpha(Delta,GameConfig.CameraPositionDamping));
+    this.Camera.position.copy(this.CameraPosition);
+    this.Camera.lookAt(this.CameraTarget.clone().addScaledVector(ViewForward,2));
   }
 }
