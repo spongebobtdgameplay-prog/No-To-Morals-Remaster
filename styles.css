@@ -39,6 +39,8 @@ body{font-family:var(--mono);color:var(--text)}
 .Crosshair:before{left:7px;top:1px;width:2px;height:14px}
 .Crosshair:after{left:1px;top:7px;width:14px;height:2px}
 .InteractPrompt{position:fixed;left:50%;bottom:22%;transform:translateX(-50%);min-width:260px;text-align:center;color:#fff;font-size:12px;letter-spacing:.08em;text-shadow:0 2px 8px #000}
+.PickupFeedback{position:fixed;left:50%;top:58%;transform:translate(-50%,-8px);padding:9px 13px;border:1px solid rgba(116,224,171,.56);background:rgba(5,15,12,.9);color:var(--green);font-size:11px;font-weight:800;letter-spacing:.12em;opacity:0;transition:opacity .12s ease,transform .12s ease}
+.PickupFeedback.Visible{opacity:1;transform:translate(-50%,0)}
 .Overlay{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:18px;background:radial-gradient(circle at center,rgba(15,20,24,.9),rgba(3,5,7,.99))}
 .StartCard{width:min(1040px,calc(100vw - 36px));min-height:min(700px,calc(100vh - 36px));border:1px solid rgba(255,255,255,.24);background:linear-gradient(145deg,rgba(17,22,26,.96),rgba(8,11,14,.96));padding:clamp(42px,6vw,78px);box-shadow:0 48px 140px rgba(0,0,0,.62);display:flex;flex-direction:column;justify-content:center}
 .Eyebrow{margin:0 0 20px;color:var(--muted);font-size:12px;letter-spacing:.22em}
