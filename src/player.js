@@ -17,7 +17,7 @@ export class PlayerController{
     this.Camera = Camera;
     this.Canvas = Canvas;
     this.Collision = Collision;
-    this.Position = new THREE.Vector3(0,0,16);
+    this.Position = new THREE.Vector3(0,0,6);
     this.Keys = new Set();
     this.Yaw = Math.PI;
     this.Pitch = -0.16;
