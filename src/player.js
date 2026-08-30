@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-downtown2";
-import {LimbContactSystem} from "./animation-contact.js?v=20260830-downtown2";
+import {GameConfig} from "./config.js?v=20260830-repair3";
+import {LimbContactSystem} from "./animation-contact.js?v=20260830-repair3";
 
 function ExpAlpha(Delta,Rate){
   return 1-Math.exp(-Rate*Delta);
@@ -181,7 +181,7 @@ export class PlayerController{
     }
 
     this.MoveForward.set(Math.sin(this.Yaw),0,Math.cos(this.Yaw)).normalize();
-    this.MoveRight.crossVectors(this.MoveForward,this.UpVector).normalize();
+    this.MoveRight.crossVectors(this.UpVector,this.MoveForward).normalize();
 
     this.MoveDirection.set(0,0,0)
       .addScaledVector(this.MoveForward,ForwardInput)
