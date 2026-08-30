@@ -50,9 +50,9 @@ function CloneAndStyleMaterial(Material,Role){
 
   if(Clone.color){
     if(Role === "Robber"){
-      Clone.color.lerp(new THREE.Color(0x101214),0.64);
+      Clone.color.lerp(new THREE.Color(0x171b20),0.42);
     }else{
-      Clone.color.lerp(new THREE.Color(0x243f59),0.18);
+      Clone.color.lerp(new THREE.Color(0x274c68),0.24);
     }
   }
 
@@ -70,6 +70,19 @@ function StyleCharacter(Model,Role){
       Object.material = CloneAndStyleMaterial(Object.material,Role);
     }
   });
+}
+
+
+function RemoveUnwantedAccessories(Model){
+  const Remove = [];
+  Model.traverse(Object=>{
+    const Name = String(Object.name || "").toLowerCase();
+    if(/backpack|rucksack|back_pack|back-pack/.test(Name)) Remove.push(Object);
+  });
+
+  for(const Object of Remove){
+    Object.parent?.remove(Object);
+  }
 }
 
 function NormalizeCharacter(Model){
@@ -92,28 +105,6 @@ function NormalizeCharacter(Model){
       Object.frustumCulled = false;
     }
   });
-}
-
-function AddRoleVest(Model,Role){
-  const Material = new THREE.MeshStandardMaterial({
-    color:Role === "Police" ? 0x1d4c78 : 0x111416,
-    roughness:0.84,
-    metalness:0.04
-  });
-
-  const Vest = new THREE.Mesh(new THREE.BoxGeometry(0.48,0.58,0.24),Material);
-  Vest.position.set(0,1.16,-0.02);
-  Vest.castShadow = true;
-  Model.add(Vest);
-
-  if(Role === "Police"){
-    const Badge = new THREE.Mesh(
-      new THREE.BoxGeometry(0.07,0.09,0.02),
-      new THREE.MeshStandardMaterial({color:0xb8c6d2,metalness:0.55,roughness:0.35})
-    );
-    Badge.position.set(0.13,1.31,0.13);
-    Model.add(Badge);
-  }
 }
 
 export class ProceduralHumanoidAnimator{
@@ -174,7 +165,7 @@ export class CharacterAssets{
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260826-3");
+    const Response = await fetch("assets/models/manifest.json?v=20260830-v01-models");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
 
     this.Manifest = await Response.json();
@@ -203,9 +194,9 @@ export class CharacterAssets{
     const Source = this.Models.get(Key);
     const Model = Source ? SkeletonClone(Source) : BuildFallbackHumanoid(Role);
 
+    RemoveUnwantedAccessories(Model);
     StyleCharacter(Model,Role);
     NormalizeCharacter(Model);
-    AddRoleVest(Model,Role);
 
     const RightHand = FindBone(Model,[
       /righthand/,
