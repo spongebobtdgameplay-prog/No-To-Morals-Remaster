@@ -180,15 +180,7 @@ export class PlayerController{
       RightInput /= InputLength;
     }
 
-    this.Camera.getWorldDirection(this.MoveForward);
-    this.MoveForward.y = 0;
-
-    if(this.MoveForward.lengthSq() < 0.000001){
-      this.MoveForward.set(Math.sin(this.Yaw),0,Math.cos(this.Yaw));
-    }else{
-      this.MoveForward.normalize();
-    }
-
+    this.MoveForward.set(Math.sin(this.Yaw),0,Math.cos(this.Yaw)).normalize();
     this.MoveRight.crossVectors(this.MoveForward,this.UpVector).normalize();
 
     this.MoveDirection.set(0,0,0)
@@ -218,13 +210,22 @@ export class PlayerController{
       HorizontalDelta,
       GameConfig.PlayerRadius,
       {
-        MinY:this.Position.y+0.04,
-        MaxY:this.Position.y+GameConfig.PlayerColliderHeight
+        MinY:this.Position.y+0.035,
+        MaxY:this.Position.y+GameConfig.PlayerColliderHeight,
+        MaxStepHeight:GameConfig.MaxStepHeight,
+        Skin:GameConfig.CollisionSkin,
+        AllowSlide:true
       }
     );
 
     this.Position.x = Result.Position.x;
     this.Position.z = Result.Position.z;
+
+    if(Result.Stepped && Number.isFinite(Result.StepHeight) && this.VerticalVelocity <= 0.2){
+      this.Position.y = Math.max(this.Position.y,Result.StepHeight);
+      this.VerticalVelocity = 0;
+      this.Grounded = true;
+    }
 
     const PreviousFeetY = this.Position.y;
     this.VerticalVelocity -= GameConfig.Gravity*Delta;
