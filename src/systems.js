@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v012";
+import {GameConfig} from "./config.js?v=20260830-v012b";
 
 export class VaultSystem{
   constructor(Scene,Collision){
@@ -170,7 +170,7 @@ export class LootSystem{
     Closest.userData.Collected = true;
     Closest.visible = false;
     this.Count += 1;
-    Player.UpdateLootBag(this.Count/GameConfig.RequiredLoot);
+    Player.UpdateLootBag(this.Count/GameConfig.LootCount);
     Ui.SetLoot(this.Count,GameConfig.LootCount);
     Ui.SetPickupFeedback("LOOT SECURED  +$"+GameConfig.LootValue.toLocaleString());
   }
@@ -324,7 +324,7 @@ export class GameUi{
     this.EndTitle.textContent = Win ? "ESCAPED" : "CAUGHT";
     this.EndTitle.style.color = Win ? "var(--green)" : "var(--alarm)";
     this.EndText.textContent = Win
-      ? "You made it out with "+Loot+" loot bag"+(Loot===1?"":"s")+"."
+      ? "You made it out with "+Loot+" loot crate"+(Loot===1?"":"s")+"."
       : "The response team reached you. Loot secured: "+Loot+".";
   }
 

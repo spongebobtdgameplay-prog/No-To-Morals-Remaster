@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v012";
+import {GameConfig} from "./config.js?v=20260830-v012b";
 import {LimbContactSystem} from "./animation-contact.js?v=20260830-v012";
 
 function ExpAlpha(Delta,Rate){
@@ -19,9 +19,12 @@ export class PlayerController{
     this.Collision = Collision;
     this.Position = new THREE.Vector3(0,0,6);
     this.Keys = new Set();
-    this.Yaw = Math.PI;
-    this.Pitch = -0.16;
-    this.CameraDistance = GameConfig.CameraDefault;
+    this.TargetYaw = Math.PI;
+    this.Yaw = this.TargetYaw;
+    this.TargetPitch = -0.16;
+    this.Pitch = this.TargetPitch;
+    this.TargetCameraDistance = GameConfig.CameraDefault;
+    this.CameraDistance = this.TargetCameraDistance;
     this.VerticalVelocity = 0;
     this.Grounded = true;
     this.Stamina = 100;
@@ -74,9 +77,9 @@ export class PlayerController{
 
     this.OnMouseMove = Event=>{
       if(!this.Active || document.pointerLockElement !== this.Canvas) return;
-      this.Yaw -= Event.movementX*0.0021;
-      this.Pitch -= Event.movementY*0.0017;
-      this.Pitch = THREE.MathUtils.clamp(this.Pitch,-0.82,0.48);
+      this.TargetYaw = NormalizeAngle(this.TargetYaw-Event.movementX*0.0021);
+      this.TargetPitch -= Event.movementY*0.0017;
+      this.TargetPitch = THREE.MathUtils.clamp(this.TargetPitch,-0.82,0.48);
     };
 
     this.OnMouseDown = Event=>{
@@ -92,8 +95,8 @@ export class PlayerController{
 
     this.OnWheel = Event=>{
       if(!this.Active) return;
-      this.CameraDistance = THREE.MathUtils.clamp(
-        this.CameraDistance+Math.sign(Event.deltaY)*0.35,
+      this.TargetCameraDistance = THREE.MathUtils.clamp(
+        this.TargetCameraDistance+Math.sign(Event.deltaY)*0.35,
         GameConfig.CameraMin,
         GameConfig.CameraMax
       );
@@ -215,6 +218,15 @@ export class PlayerController{
 
   Update(Delta){
     if(!this.Active) return;
+
+    const YawDifference = NormalizeAngle(this.TargetYaw-this.Yaw);
+    this.Yaw = NormalizeAngle(this.Yaw+YawDifference*ExpAlpha(Delta,GameConfig.CameraYawDamping));
+    this.Pitch = THREE.MathUtils.lerp(this.Pitch,this.TargetPitch,ExpAlpha(Delta,GameConfig.CameraPitchDamping));
+    this.CameraDistance = THREE.MathUtils.lerp(
+      this.CameraDistance,
+      this.TargetCameraDistance,
+      ExpAlpha(Delta,GameConfig.CameraZoomDamping)
+    );
 
     let ForwardInput = 0;
     let RightInput = 0;
@@ -353,10 +365,28 @@ export class PlayerController{
 
     const SafeCamera = this.Collision.ClipSegment(this.CameraTarget,DesiredCamera,GameConfig.CameraCollisionPadding);
     const DesiredBoom = SafeCamera.distanceTo(this.CameraTarget);
-    this.CameraBoomDistance = THREE.MathUtils.lerp(this.CameraBoomDistance,DesiredBoom,ExpAlpha(Delta,GameConfig.CameraBoomDamping));
+    if(DesiredBoom < this.CameraBoomDistance){
+      this.CameraBoomDistance = DesiredBoom;
+    }else{
+      this.CameraBoomDistance = THREE.MathUtils.lerp(
+        this.CameraBoomDistance,
+        DesiredBoom,
+        ExpAlpha(Delta,GameConfig.CameraBoomDamping)
+      );
+    }
     const CameraDirection = DesiredCamera.sub(this.CameraTarget).normalize();
-    const SmoothedCamera = this.CameraTarget.clone().addScaledVector(CameraDirection,this.CameraBoomDistance);
-    this.CameraPosition.lerp(SmoothedCamera,ExpAlpha(Delta,GameConfig.CameraPositionDamping));
+    const BoomCamera = this.CameraTarget.clone().addScaledVector(CameraDirection,this.CameraBoomDistance);
+    const PositionTarget = this.Collision.ClipSegment(
+      this.CameraTarget,
+      BoomCamera,
+      GameConfig.CameraCollisionPadding
+    );
+    this.CameraPosition.lerp(PositionTarget,ExpAlpha(Delta,GameConfig.CameraPositionDamping));
+    this.CameraPosition.copy(this.Collision.ClipSegment(
+      this.CameraTarget,
+      this.CameraPosition,
+      GameConfig.CameraCollisionPadding
+    ));
     this.Camera.position.copy(this.CameraPosition);
     this.Camera.lookAt(this.CameraTarget.clone().addScaledVector(ViewForward,2));
   }
