@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v01-models";
-import {CollisionWorld} from "./collision.js?v=20260830-v01-models";
-import {CharacterAssets} from "./assets.js?v=20260830-v01-models";
-import {BankWorld} from "./world.js?v=20260830-v01-models";
-import {PlayerController} from "./player.js?v=20260830-v01-models";
-import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-v01-models";
+import {GameConfig} from "./config.js?v=20260830-v01-meshopt1";
+import {CollisionWorld} from "./collision.js?v=20260830-v01-meshopt1";
+import {CharacterAssets} from "./assets.js?v=20260830-v01-meshopt1";
+import {BankWorld} from "./world.js?v=20260830-v01-meshopt1";
+import {PlayerController} from "./player.js?v=20260830-v01-meshopt1";
+import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-v01-meshopt1";
 
 const Canvas = document.getElementById("GameCanvas");
 const Renderer = new THREE.WebGLRenderer({canvas:Canvas,antialias:true,powerPreference:"high-performance"});
@@ -82,9 +82,11 @@ function Finish(Win){
 }
 
 async function Boot(){
-  try{
-    Ui.BootStatus.textContent = "Loading character and environment models...";
+  Ui.StartButton.disabled = true;
+  Ui.StartButton.textContent = "LOADING GAME";
+  Ui.BootStatus.textContent = "Loading and decoding required models...";
 
+  try{
     await Promise.all([
       Assets.Load(),
       World.LoadModels()
@@ -94,16 +96,8 @@ async function Boot(){
     Player.AttachCharacter(Robber,Scene);
     Ui.SetReady();
   }catch(Error){
-    Ui.Error(Error);
-
-    try{
-      const Robber = Assets.Create("Robber");
-      Player.AttachCharacter(Robber,Scene);
-    }catch(CharacterError){
-      Ui.Error(CharacterError);
-    }
-
-    Ui.SetReady();
+    console.error("Boot failed.",Error);
+    Ui.SetBootFailure(Error);
   }
 }
 
