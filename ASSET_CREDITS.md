@@ -6,11 +6,11 @@ The player and response characters now come from one visually matched character 
 
 - Creator: Quaternius
 - License: CC0 1.0
-- Player model: `swat.glb`
+- Player model: `hoodie.glb`
 - Response model: `casual.glb`
 - Runtime mirror: `nixocode/vietnam-65-lanes-of-war`
 
-The player uses the masked, gloved character from the same CC0 modular-men pack, with backpack-style accessory nodes removed at runtime. The runtime applies a restrained charcoal material treatment and uses generic idle/walk/run animation clips when available, with a bone-animation fallback so the character does not remain in a T-pose.
+The player uses the adult-proportioned hoodie character from the same CC0 modular-men pack, with accessory nodes removed at runtime. The runtime applies dark modern clothing and concealed-face material treatment, and uses its imported idle, walk, and run animation clips.
 
 ## Downtown City environment
 
