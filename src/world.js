@@ -84,7 +84,7 @@ export class BankWorld{
     for(let X=-12;X<=12;X+=4){
       for(let Z=-10;Z<=10;Z+=4){
         this.AddProp("BankFloor",{
-          Position:new THREE.Vector3(X,0,Z),
+          Position:new THREE.Vector3(X,-0.035,Z),
           TargetWidth:4,
           TargetDepth:4,
           Collision:false,
@@ -166,7 +166,7 @@ export class BankWorld{
 
     for(const X of RoadXs){
       this.AddProp("RoadStraight",{
-        Position:new THREE.Vector3(X,0,20),
+        Position:new THREE.Vector3(X,-0.38,20),
         TargetWidth:8,
         TargetDepth:8,
         Collision:false,
@@ -175,7 +175,7 @@ export class BankWorld{
     }
 
     this.AddProp("RoadCrossing",{
-      Position:new THREE.Vector3(0,0,28),
+      Position:new THREE.Vector3(0,-0.38,28),
       TargetWidth:8,
       TargetDepth:8,
       Collision:false,
