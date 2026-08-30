@@ -36,17 +36,41 @@ function FindClip(Animations,Names){
 
 function CloneMaterial(Material,Role){
   const Clone = Material.clone();
+  const Name = String(Clone.name || "").toLowerCase();
+
+  if(Clone.map){
+    Clone.map.colorSpace = THREE.SRGBColorSpace;
+    Clone.map.needsUpdate = true;
+  }
 
   if(Clone.color){
     if(Role === "Robber"){
-      Clone.color.lerp(new THREE.Color(0x171b20),0.38);
+      if(/skin/.test(Name)){
+        Clone.color.lerp(new THREE.Color(0xb98263),0.08);
+      }else if(/hair|eyebrow/.test(Name)){
+        Clone.color.setHex(0x17191c);
+      }else if(/purple/.test(Name)){
+        Clone.color.setHex(0x252c35);
+      }else if(/lightblue/.test(Name)){
+        Clone.color.setHex(0x37434f);
+      }else if(/white/.test(Name)){
+        Clone.color.setHex(0x30363d);
+      }else{
+        Clone.color.lerp(new THREE.Color(0x3a424a),0.12);
+      }
     }else{
-      Clone.color.lerp(new THREE.Color(0x20384f),0.34);
+      Clone.color.lerp(new THREE.Color(0x29435c),0.24);
     }
   }
 
   if("roughness" in Clone && Number.isFinite(Clone.roughness)){
-    Clone.roughness = Math.max(Clone.roughness,0.54);
+    Clone.roughness = Role === "Robber"
+      ? THREE.MathUtils.clamp(Clone.roughness,0.58,0.88)
+      : Math.max(Clone.roughness,0.54);
+  }
+
+  if("metalness" in Clone && Number.isFinite(Clone.metalness) && Role === "Robber"){
+    Clone.metalness = Math.min(Clone.metalness,0.08);
   }
 
   return Clone;
@@ -60,21 +84,6 @@ function StyleCharacter(Model,Role){
       Object.material = Object.material.map(Material=>CloneMaterial(Material,Role));
     }else{
       Object.material = CloneMaterial(Object.material,Role);
-    }
-
-    if(Role === "Robber"){
-      const Materials = Array.isArray(Object.material) ? Object.material : [Object.material];
-      for(const Material of Materials){
-        const Name = String(Material?.name || "").toLowerCase();
-        if(!Material?.color) continue;
-        if(/skin/.test(Name)) Material.color.setHex(0x090b0d);
-        else if(/eye/.test(Name)) Material.color.setHex(0xc8cbd0);
-        else if(/eyebrow|hair/.test(Name)) Material.color.setHex(0x050607);
-        else if(/purple|lightblue|white/.test(Name)) Material.color.setHex(
-          /purple/.test(Name) ? 0x101419 : /lightblue/.test(Name) ? 0x232a31 : 0x171b20
-        );
-        Material.roughness = Math.max(Number(Material.roughness) || 0,0.78);
-      }
     }
 
     Object.castShadow = true;
@@ -91,13 +100,17 @@ function StyleLootBag(Model){
     const Styled = Materials.map(Material=>{
       const Clone = Material.clone();
       const Name = String(Clone.name || "").toLowerCase();
+      if(Clone.map){
+        Clone.map.colorSpace = THREE.SRGBColorSpace;
+        Clone.map.needsUpdate = true;
+      }
       if(Clone.color){
         if(/gold/.test(Name)) Clone.color.setHex(0xb08a3f);
-        else if(/black/.test(Name)) Clone.color.setHex(0x090b0e);
-        else Clone.color.setHex(0x141a20);
+        else if(/black/.test(Name)) Clone.color.setHex(0x22272d);
+        else Clone.color.setHex(0x2a3037);
       }
-      if("roughness" in Clone) Clone.roughness = /gold/.test(Name) ? 0.4 : 0.86;
-      if("metalness" in Clone) Clone.metalness = /gold/.test(Name) ? 0.45 : 0.02;
+      if("roughness" in Clone) Clone.roughness = /gold/.test(Name) ? 0.4 : 0.72;
+      if("metalness" in Clone) Clone.metalness = /gold/.test(Name) ? 0.45 : 0.03;
       return Clone;
     });
     Object.material = WasArray ? Styled : Styled[0];
@@ -246,7 +259,7 @@ export class CharacterAssets{
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260830-v012");
+    const Response = await fetch("assets/models/manifest.json?v=20260830-v013");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
 
     this.Manifest = await Response.json();
@@ -304,10 +317,12 @@ export class CharacterAssets{
     );
 
     const BagAnchor = FindBone(Model,[
-      /chest/,
+      /hips$/,
+      /pelvis$/,
+      /spine$/,
+      /abdomen/,
       /torso/,
-      /spine/,
-      /abdomen/
+      /chest/
     ]);
 
     return {
@@ -317,7 +332,7 @@ export class CharacterAssets{
         : new BoneAnimator(Model),
       RightHand,
       BagAnchor,
-      FacingOffset:-Math.PI/2
+      FacingOffset:Math.PI/2
     };
   }
 
@@ -326,7 +341,7 @@ export class CharacterAssets{
     if(!Source?.Scene) throw new Error("Required duffel bag model is unavailable.");
     const Model = Source.Scene.clone(true);
     StyleLootBag(Model);
-    Model.scale.setScalar(0.18);
+    Model.scale.setScalar(0.17);
     Model.name = "RobberLootDuffel";
     return Model;
   }

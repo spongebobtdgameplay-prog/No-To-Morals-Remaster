@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v012b";
+import {GameConfig} from "./config.js?v=20260830-v013";
 import {LimbContactSystem} from "./animation-contact.js?v=20260830-v012";
 
 function ExpAlpha(Delta,Rate){
@@ -127,8 +127,8 @@ export class PlayerController{
     this.LootBag = Bag;
     this.LootBagBaseScale.copy(Bag.scale);
     this.CharacterRoot.add(Bag);
-    Bag.position.set(-0.46,0.92,0.06);
-    Bag.rotation.set(0.08,Math.PI/2,-0.08);
+    Bag.position.set(-0.28,0.82,-0.14);
+    Bag.rotation.set(0.06,Math.PI/2,-0.2);
     this.LootBagBasePosition.copy(Bag.position);
     this.UpdateLootBag(0);
     this.UpdateLootBagTransform();
@@ -152,9 +152,9 @@ export class PlayerController{
       this.BagAnchor.getWorldPosition(this.LootBagAnchorWorld);
       this.CharacterRoot.worldToLocal(this.LootBagAnchorWorld);
       this.LootBag.position.copy(this.LootBagAnchorWorld);
-      this.LootBag.position.x -= 0.46;
-      this.LootBag.position.y -= 0.37-this.LootBagFullness*0.018;
-      this.LootBag.position.z += 0.06;
+      this.LootBag.position.x -= 0.28;
+      this.LootBag.position.y -= 0.1-this.LootBagFullness*0.012;
+      this.LootBag.position.z -= 0.14;
     }else{
       this.LootBag.position.copy(this.LootBagBasePosition);
       this.LootBag.position.y += this.LootBagFullness*0.018;
@@ -242,7 +242,14 @@ export class PlayerController{
       RightInput /= InputLength;
     }
 
-    this.MoveForward.set(Math.sin(this.Yaw),0,Math.cos(this.Yaw));
+    this.Camera.getWorldDirection(this.MoveForward);
+    this.MoveForward.y = 0;
+
+    if(this.MoveForward.lengthSq() < 0.0001){
+      this.MoveForward.set(Math.sin(this.Yaw),0,Math.cos(this.Yaw));
+    }else{
+      this.MoveForward.normalize();
+    }
 
     this.MoveRight.crossVectors(this.MoveForward,this.UpVector).normalize();
 
