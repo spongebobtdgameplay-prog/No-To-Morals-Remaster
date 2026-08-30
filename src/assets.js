@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+import {MeshoptDecoder} from "three/addons/libs/meshopt_decoder.module.js";
 import {clone as SkeletonClone} from "three/addons/utils/SkeletonUtils.js";
 
 function FindBone(Root,Patterns){
@@ -160,12 +161,13 @@ export class ProceduralHumanoidAnimator{
 export class CharacterAssets{
   constructor(){
     this.Loader = new GLTFLoader();
+    this.Loader.setMeshoptDecoder(MeshoptDecoder);
     this.Manifest = null;
     this.Models = new Map();
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260830-v01-models");
+    const Response = await fetch("assets/models/manifest.json?v=20260830-v01-meshopt1");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
 
     this.Manifest = await Response.json();
@@ -182,17 +184,19 @@ export class CharacterAssets{
 
     try{
       const Gltf = await this.Loader.loadAsync(Entry.url);
+      if(!Gltf?.scene) throw new Error("Loaded GLB has no scene.");
       this.Models.set(Key,Gltf.scene);
     }catch(Error){
-      console.warn("Character asset failed; fallback will be used.",Key,Error);
-      this.Models.set(Key,null);
+      this.Models.delete(Key);
+      throw new Error("Character model "+Key+" failed to load: "+String(Error?.message || Error));
     }
   }
 
   Create(Role){
     const Key = Role === "Police" ? "police" : "robber";
     const Source = this.Models.get(Key);
-    const Model = Source ? SkeletonClone(Source) : BuildFallbackHumanoid(Role);
+    if(!Source) throw new Error("Required character model is unavailable: "+Key);
+    const Model = SkeletonClone(Source);
 
     RemoveUnwantedAccessories(Model);
     StyleCharacter(Model,Role);
