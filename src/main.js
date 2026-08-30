@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-downtown2";
-import {CollisionWorld} from "./collision.js?v=20260830-downtown2";
-import {CharacterAssets} from "./assets.js?v=20260830-downtown2";
-import {BankWorld} from "./world.js?v=20260830-downtown2";
-import {PlayerController} from "./player.js?v=20260830-downtown2";
-import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-downtown2";
+import {GameConfig} from "./config.js?v=20260830-repair3";
+import {CollisionWorld} from "./collision.js?v=20260830-repair3";
+import {CharacterAssets} from "./assets.js?v=20260830-repair3";
+import {BankWorld} from "./world.js?v=20260830-repair3";
+import {PlayerController} from "./player.js?v=20260830-repair3";
+import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-repair3";
 
 const Canvas = document.getElementById("GameCanvas");
 const Renderer = new THREE.WebGLRenderer({canvas:Canvas,antialias:true,powerPreference:"high-performance"});
@@ -14,7 +14,7 @@ Renderer.shadowMap.enabled = true;
 Renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 Renderer.outputColorSpace = THREE.SRGBColorSpace;
 Renderer.toneMapping = THREE.ACESFilmicToneMapping;
-Renderer.toneMappingExposure = 1.05;
+Renderer.toneMappingExposure = 1.28;
 
 const Scene = new THREE.Scene();
 const Camera = new THREE.PerspectiveCamera(62,innerWidth/innerHeight,0.05,160);
