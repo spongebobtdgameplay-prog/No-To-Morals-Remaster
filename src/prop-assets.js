@@ -141,7 +141,9 @@ export class PropLibrary{
     const Root = new THREE.Group();
     Root.add(Model);
     Root.position.copy(Options.Position || new THREE.Vector3());
+    Root.rotation.x = Number.isFinite(Options.RotationX) ? Options.RotationX : 0;
     Root.rotation.y = Number.isFinite(Options.RotationY) ? Options.RotationY : 0;
+    Root.rotation.z = Number.isFinite(Options.RotationZ) ? Options.RotationZ : 0;
     Root.name = "Prop-"+Key;
 
     return Root;
