@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {PropLibrary} from "./prop-assets.js?v=20260830-realworld1";
+import {PropLibrary} from "./prop-assets.js?v=20260830-downtown2";
 
 export class BankWorld{
   constructor(Scene,Collision){
@@ -7,50 +7,53 @@ export class BankWorld{
     this.Collision = Collision;
     this.Props = new PropLibrary();
     this.Loot = [];
-    this.GearPosition = new THREE.Vector3(-9,0,7);
-    this.GearDisplay = null;
+    this.GearPosition = new THREE.Vector3(-8,0,5.6);
     this.VaultDoorModel = null;
-    this.EscapePosition = new THREE.Vector3(12,0,22);
+    this.EscapePosition = new THREE.Vector3(9,0,12.4);
     this.PoliceSpawns = [
-      new THREE.Vector3(-11,0,28),
-      new THREE.Vector3(-3,0,29),
-      new THREE.Vector3(6,0,29),
-      new THREE.Vector3(15,0,26)
+      new THREE.Vector3(-10,0,23),
+      new THREE.Vector3(-3,0,24),
+      new THREE.Vector3(5,0,24),
+      new THREE.Vector3(12,0,23)
     ];
 
     this.BuildLighting();
   }
 
   BuildLighting(){
-    this.Scene.background = new THREE.Color(0x070a0e);
-    this.Scene.fog = new THREE.FogExp2(0x070a0e,0.012);
+    this.Scene.background = new THREE.Color(0x0b1016);
+    this.Scene.fog = new THREE.FogExp2(0x0b1016,0.01);
 
-    const Ambient = new THREE.HemisphereLight(0xb9cee3,0x16181c,1.55);
+    const Ambient = new THREE.HemisphereLight(0xc8d8e8,0x20242a,1.7);
     this.Scene.add(Ambient);
 
-    const Moon = new THREE.DirectionalLight(0xc9dcff,1.85);
-    Moon.position.set(-14,24,20);
+    const Moon = new THREE.DirectionalLight(0xd7e4ff,2.0);
+    Moon.position.set(-14,24,18);
     Moon.castShadow = true;
     Moon.shadow.mapSize.set(2048,2048);
-    Moon.shadow.camera.left = -28;
-    Moon.shadow.camera.right = 28;
-    Moon.shadow.camera.top = 28;
-    Moon.shadow.camera.bottom = -28;
+    Moon.shadow.camera.left = -34;
+    Moon.shadow.camera.right = 34;
+    Moon.shadow.camera.top = 34;
+    Moon.shadow.camera.bottom = -34;
     this.Scene.add(Moon);
 
-    for(const X of [-9,-3,3,9]){
-      const InteriorLight = new THREE.PointLight(0xffe1b5,1.6,15,2);
-      InteriorLight.position.set(X,4.1,4);
-      this.Scene.add(InteriorLight);
+    for(const X of [-7,0,7]){
+      const LobbyLight = new THREE.PointLight(0xffdfae,1.7,13,2);
+      LobbyLight.position.set(X,2.7,3);
+      this.Scene.add(LobbyLight);
     }
 
-    const VaultLight = new THREE.PointLight(0xb9d8ff,1.8,18,2);
-    VaultLight.position.set(0,3.8,-9);
+    const VaultLight = new THREE.PointLight(0xc5dcff,1.65,12,2);
+    VaultLight.position.set(0,2.7,-7);
     this.Scene.add(VaultLight);
 
-    const GearLight = new THREE.PointLight(0x65d4ff,1.15,8,2);
-    GearLight.position.set(-9,2.5,7);
+    const GearLight = new THREE.PointLight(0x64d6ff,1.0,5.5,2);
+    GearLight.position.set(this.GearPosition.x,1.9,this.GearPosition.z);
     this.Scene.add(GearLight);
+
+    const EscapeLight = new THREE.PointLight(0x77ffc8,0.9,5.5,2);
+    EscapeLight.position.set(this.EscapePosition.x,1.9,this.EscapePosition.z);
+    this.Scene.add(EscapeLight);
   }
 
   AddProp(Key,Options={}){
@@ -58,7 +61,7 @@ export class BankWorld{
     this.Scene.add(Root);
     Root.updateWorldMatrix(true,true);
 
-    if(this.Collision && Options.Collision !== false){
+    if(this.Collision && Options.Collision === true){
       Root.userData.Collision = this.Collision.AddModel(
         Root,
         Options.CollisionType || "Prop:"+Key,
@@ -72,313 +75,274 @@ export class BankWorld{
     return Root;
   }
 
-  CreateBreachGear(){
-    return this.Props.Create("BreachGear",{
-      TargetWidth:0.34,
-      Tint:0x303942,
-      TintStrength:0.12
+  AddWallCollider(CenterX,CenterZ,Width,Depth,Type){
+    return this.Collision.AddBox(
+      CenterX,
+      CenterZ,
+      Width,
+      Depth,
+      Type,
+      {
+        MinY:0,
+        MaxY:3.05,
+        CameraBlock:true
+      }
+    );
+  }
+
+  AddPlainWallModule(X,Y,Z,RotationY=0){
+    return this.AddProp("BrickPlain",{
+      Position:new THREE.Vector3(X,Y,Z),
+      RotationY,
+      Collision:false
     });
   }
 
-  BuildBankFloor(){
-    for(let X=-12;X<=12;X+=4){
-      for(let Z=-10;Z<=10;Z+=4){
-        this.AddProp("BankFloor",{
-          Position:new THREE.Vector3(X,-0.035,Z),
-          TargetWidth:4,
-          TargetDepth:4,
+  AddPlainWallStack(X,Z,RotationY=0){
+    for(const Y of [0,1,2]){
+      this.AddPlainWallModule(X,Y,Z,RotationY);
+    }
+  }
+
+  BuildFloor(){
+    for(let X=-10;X<=10;X+=4){
+      for(let Z=-8;Z<=8;Z+=4){
+        this.AddProp("FloorTile",{
+          Position:new THREE.Vector3(X,0.001,Z),
           Collision:false,
-          CastShadow:false,
-          Tint:0x555b60,
-          TintStrength:0.12
+          CastShadow:false
         });
       }
     }
   }
 
-  BuildFrontWall(){
-    for(let X=-12;X<=12;X+=2){
-      let Key = "BankWall";
-
-      if(X === 0) Key = "BankDoorWall";
-      else if(Math.abs(X) === 4 || Math.abs(X) === 8) Key = "BankWindowWall";
-
-      this.AddProp(Key,{
-        Position:new THREE.Vector3(X,0,12),
-        TargetWidth:2,
-        CollisionType:"OuterWall"
+  BuildFrontFacade(){
+    for(const X of [-9,-5,5,9]){
+      this.AddProp("BrickWindow",{
+        Position:new THREE.Vector3(X,0,10),
+        Collision:false
       });
     }
+
+    this.AddPlainWallStack(-2,10);
+    this.AddPlainWallStack(2,10);
+
+    this.AddProp("DoorFrame",{
+      Position:new THREE.Vector3(0,0,10),
+      Collision:false
+    });
+
+    this.AddWallCollider(-6,10,10,0.32,"OuterWall");
+    this.AddWallCollider(6,10,10,0.32,"OuterWall");
   }
 
-  BuildBackWall(){
-    for(let X=-12;X<=12;X+=2){
-      this.AddProp("BankWall",{
-        Position:new THREE.Vector3(X,0,-12),
-        TargetWidth:2,
-        RotationY:Math.PI,
-        CollisionType:"OuterWall"
-      });
+  BuildBackFacade(){
+    for(let X=-10;X<=10;X+=2){
+      this.AddPlainWallStack(X,-10,Math.PI);
     }
+
+    this.AddWallCollider(0,-10,22,0.32,"OuterWall");
   }
 
-  BuildSideWalls(){
+  BuildSideFacades(){
     for(const Side of [-1,1]){
-      const X = Side*14;
+      const X = Side*11;
       const RotationY = Side > 0 ? -Math.PI/2 : Math.PI/2;
 
-      for(let Z=-10;Z<=10;Z+=2){
-        const Key = Z === 4 || Z === -4 ? "BankWindowWall" : "BankWall";
-
-        this.AddProp(Key,{
+      for(const Z of [-8,-4,0,4,8]){
+        this.AddProp("BrickWindowTrim",{
           Position:new THREE.Vector3(X,0,Z),
-          TargetWidth:2,
           RotationY,
-          CollisionType:"OuterWall"
+          Collision:false
         });
       }
+
+      this.AddWallCollider(X,0,0.32,20,"OuterWall");
     }
   }
 
   BuildVaultPartition(){
-    for(const X of [-12,-10,-8,-6,-4,4,6,8,10,12]){
-      this.AddProp("BankWall",{
-        Position:new THREE.Vector3(X,0,-6),
-        TargetWidth:2,
-        CollisionType:"VaultWall",
-        Tint:0x4a4f54,
-        TintStrength:0.08
-      });
+    for(const X of [-10,-8,-6,-4,-2,2,4,6,8,10]){
+      this.AddPlainWallStack(X,-4);
     }
 
-    this.VaultDoorModel = this.AddProp("VaultDoor",{
-      Position:new THREE.Vector3(0,0,-5.72),
-      TargetWidth:5,
-      TargetHeight:4.3,
-      Collision:false,
-      Tint:0x3f474e,
-      TintStrength:0.08
+    this.VaultDoorModel = this.AddProp("MetalWindow",{
+      Position:new THREE.Vector3(0,0,-4),
+      Collision:false
     });
+
+    this.AddWallCollider(-6.5,-4,9,0.32,"VaultWall");
+    this.AddWallCollider(6.5,-4,9,0.32,"VaultWall");
+  }
+
+  BuildTellerArea(){
+    for(const X of [-6,-4,-2,2,4,6]){
+      this.AddPlainWallModule(X,0,2);
+    }
+
+    this.Collision.AddBox(
+      -4,
+      2,
+      6,
+      0.32,
+      "Counter",
+      {
+        MinY:0,
+        MaxY:1.02,
+        CameraBlock:true
+      }
+    );
+
+    this.Collision.AddBox(
+      4,
+      2,
+      6,
+      0.32,
+      "Counter",
+      {
+        MinY:0,
+        MaxY:1.02,
+        CameraBlock:true
+      }
+    );
+
+    for(const X of [-6,-2,2,6]){
+      this.AddProp("MetalWindow",{
+        Position:new THREE.Vector3(X,0,1.78),
+        Collision:false
+      });
+    }
   }
 
   BuildStreet(){
-    const RoadXs = [-12,-4,4,12];
-
-    for(const X of RoadXs){
-      this.AddProp("RoadStraight",{
-        Position:new THREE.Vector3(X,-0.38,20),
-        TargetWidth:8,
-        TargetDepth:8,
+    for(const X of [-18,-6,6,18]){
+      this.AddProp("Street2Lane",{
+        Position:new THREE.Vector3(X,0,16.7),
+        RotationY:Math.PI/2,
         Collision:false,
         CastShadow:false
       });
     }
 
-    this.AddProp("RoadCrossing",{
-      Position:new THREE.Vector3(0,-0.38,28),
-      TargetWidth:8,
-      TargetDepth:8,
+    for(const X of [-10,-6,-2,2,6,10]){
+      this.AddProp("FloorTile",{
+        Position:new THREE.Vector3(X,0.002,12),
+        Collision:false,
+        CastShadow:false
+      });
+    }
+
+    this.AddProp("EntranceStairs",{
+      Position:new THREE.Vector3(0,0,10.15),
+      Collision:true,
+      CollisionType:"EntranceStairs"
+    });
+
+    for(const X of [-2.7,2.7]){
+      this.AddProp("Bollard",{
+        Position:new THREE.Vector3(X,0,12.45),
+        Collision:false
+      });
+    }
+
+    for(const X of [-8.3,8.3]){
+      this.AddProp("Planter",{
+        Position:new THREE.Vector3(X,0,12),
+        Collision:true,
+        CollisionType:"Planter"
+      });
+    }
+
+    this.AddProp("Manhole",{
+      Position:new THREE.Vector3(5.5,0.01,16.7),
       Collision:false,
       CastShadow:false
     });
 
-    const Buildings = [
-      ["CityBuildingA",new THREE.Vector3(-18,0,29),9.5,Math.PI],
-      ["CityBuildingB",new THREE.Vector3(-8,0,32),10.5,Math.PI],
-      ["CityBuildingC",new THREE.Vector3(6,0,32),9.2,Math.PI],
-      ["CityBuildingB",new THREE.Vector3(18,0,29),11.0,Math.PI]
-    ];
+    this.AddProp("BuildingLarge",{
+      Position:new THREE.Vector3(-23,0,39),
+      RotationY:Math.PI,
+      Collision:false
+    });
 
-    for(const [Key,Position,Height,RotationY] of Buildings){
-      this.AddProp(Key,{
-        Position,
-        TargetHeight:Height,
-        RotationY,
-        Collision:false,
-        Tint:0x606b73,
-        TintStrength:0.05
-      });
-    }
+    this.AddProp("BuildingMedium",{
+      Position:new THREE.Vector3(-4,0,38),
+      RotationY:Math.PI,
+      Collision:false
+    });
 
-    for(const X of [-11,-5,5,11]){
-      this.AddProp("Streetlight",{
-        Position:new THREE.Vector3(X,0,15.8),
-        TargetHeight:4.4,
-        RotationY:X < 0 ? Math.PI : 0,
+    this.AddProp("BuildingSmall",{
+      Position:new THREE.Vector3(12,0,37),
+      RotationY:Math.PI,
+      Collision:false
+    });
+
+    this.AddProp("BuildingMedium",{
+      Position:new THREE.Vector3(28,0,39),
+      RotationY:Math.PI,
+      Collision:false
+    });
+
+    for(const X of [7.8,10.2]){
+      this.AddProp("Bollard",{
+        Position:new THREE.Vector3(X,0,12.45),
         Collision:false
       });
     }
-
-    this.AddProp("Dumpster",{
-      Position:new THREE.Vector3(12.8,0,23.2),
-      TargetWidth:1.7,
-      RotationY:-Math.PI/2,
-      Tint:0x31463b,
-      TintStrength:0.08
-    });
-
-    this.AddProp("Hydrant",{
-      Position:new THREE.Vector3(6.4,0,15.6),
-      TargetHeight:0.72,
-      Collision:false
-    });
   }
 
-  BuildLobby(){
-    for(const X of [-5,0,5]){
-      this.AddProp("ReceptionDesk",{
-        Position:new THREE.Vector3(X,0,3.2),
-        TargetWidth:3.1,
-        RotationY:Math.PI,
-        Tint:0x5e5148,
-        TintStrength:0.06
-      });
-
-      this.AddProp("OfficeChair",{
-        Position:new THREE.Vector3(X,0,1.65),
-        TargetHeight:1.08,
-        Tint:0x303940,
-        TintStrength:0.08
-      });
-
-      this.AddProp("Monitor",{
-        Position:new THREE.Vector3(X,0.84,2.95),
-        TargetHeight:0.54,
-        RotationY:Math.PI,
-        Collision:false
-      });
-
-      this.AddProp("Laptop",{
-        Position:new THREE.Vector3(X+0.62,0.84,3.25),
-        TargetWidth:0.58,
-        RotationY:Math.PI,
-        Collision:false
-      });
-    }
-
-    this.AddProp("Couch",{
-      Position:new THREE.Vector3(-10.2,0,8.0),
-      TargetWidth:3.1,
-      RotationY:Math.PI/2,
-      Tint:0x49545b,
-      TintStrength:0.06
+  BuildLobbyDetails(){
+    this.AddProp("Planter",{
+      Position:new THREE.Vector3(-8,0,6.8),
+      Collision:true,
+      CollisionType:"LobbyPlanter"
     });
 
-    this.AddProp("Couch",{
-      Position:new THREE.Vector3(10.2,0,8.0),
-      TargetWidth:3.1,
-      RotationY:-Math.PI/2,
-      Tint:0x49545b,
-      TintStrength:0.06
+    this.AddProp("Planter",{
+      Position:new THREE.Vector3(8,0,6.8),
+      Collision:true,
+      CollisionType:"LobbyPlanter"
     });
 
-    this.AddProp("Armchair",{
-      Position:new THREE.Vector3(-8.1,0,9.55),
-      TargetHeight:1.08,
-      RotationY:Math.PI
-    });
-
-    this.AddProp("Armchair",{
-      Position:new THREE.Vector3(8.1,0,9.55),
-      TargetHeight:1.08,
-      RotationY:Math.PI
-    });
-
-    this.AddProp("Plant",{
-      Position:new THREE.Vector3(-11.8,0,9.1),
-      TargetHeight:1.45,
+    this.AddProp("Bollard",{
+      Position:new THREE.Vector3(this.GearPosition.x,0,this.GearPosition.z),
       Collision:false
-    });
-
-    this.AddProp("Plant",{
-      Position:new THREE.Vector3(11.8,0,9.1),
-      TargetHeight:1.45,
-      Collision:false
-    });
-
-    this.AddProp("FloorLamp",{
-      Position:new THREE.Vector3(-11.2,0,5.2),
-      TargetHeight:1.8,
-      Collision:false
-    });
-
-    this.AddProp("FloorLamp",{
-      Position:new THREE.Vector3(11.2,0,5.2),
-      TargetHeight:1.8,
-      Collision:false
-    });
-
-    this.AddProp("Storage",{
-      Position:new THREE.Vector3(-11.2,0,6.6),
-      TargetHeight:2.1,
-      RotationY:Math.PI/2
-    });
-
-    this.AddProp("Storage",{
-      Position:new THREE.Vector3(-11.2,0,8.5),
-      TargetHeight:2.1,
-      RotationY:Math.PI/2
-    });
-
-    this.AddProp("Trash",{
-      Position:new THREE.Vector3(11.6,0,4.8),
-      TargetHeight:0.75,
-      Collision:false
-    });
-  }
-
-  BuildGearStation(){
-    this.AddProp("ReceptionDesk",{
-      Position:this.GearPosition.clone(),
-      TargetWidth:2.7,
-      RotationY:0,
-      Tint:0x37434a,
-      TintStrength:0.08
-    });
-
-    this.GearDisplay = this.AddProp("BreachGear",{
-      Position:new THREE.Vector3(this.GearPosition.x,0.98,this.GearPosition.z),
-      TargetWidth:0.42,
-      RotationY:Math.PI/2,
-      Collision:false,
-      Tint:0x303942,
-      TintStrength:0.12
     });
   }
 
   BuildLoot(){
     const LootPositions = [
-      [-4.2,-9.3],
-      [-2.1,-8.7],
-      [0,-9.35],
-      [2.1,-8.7],
-      [4.2,-9.3]
+      [-6,-7.6],
+      [-3,-7.2],
+      [0,-7.8],
+      [3,-7.2],
+      [6,-7.6]
     ];
 
     for(const [X,Z] of LootPositions){
-      const LootBox = this.AddProp("LootBox",{
+      const Loot = this.AddProp("LootBox",{
         Position:new THREE.Vector3(X,0,Z),
-        TargetWidth:0.82,
-        Tint:0x4b6650,
-        TintStrength:0.08
+        TargetWidth:0.85,
+        Collision:true,
+        CollisionType:"Loot"
       });
 
-      LootBox.userData.Collected = false;
-      this.Loot.push(LootBox);
+      Loot.userData.Collected = false;
+      this.Loot.push(Loot);
     }
   }
 
   async LoadModels(){
     await this.Props.Load();
 
-    this.BuildBankFloor();
-    this.BuildFrontWall();
-    this.BuildBackWall();
-    this.BuildSideWalls();
+    this.BuildFloor();
+    this.BuildFrontFacade();
+    this.BuildBackFacade();
+    this.BuildSideFacades();
     this.BuildVaultPartition();
+    this.BuildTellerArea();
     this.BuildStreet();
-    this.BuildLobby();
-    this.BuildGearStation();
+    this.BuildLobbyDetails();
     this.BuildLoot();
   }
 }
