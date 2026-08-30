@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-realworld1";
-import {CollisionWorld} from "./collision.js?v=20260830-realworld1";
-import {CharacterAssets} from "./assets.js?v=20260830-realworld1";
-import {BankWorld} from "./world.js?v=20260830-realworld1";
-import {PlayerController} from "./player.js?v=20260830-realworld1";
-import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-realworld1";
+import {GameConfig} from "./config.js?v=20260830-downtown2";
+import {CollisionWorld} from "./collision.js?v=20260830-downtown2";
+import {CharacterAssets} from "./assets.js?v=20260830-downtown2";
+import {BankWorld} from "./world.js?v=20260830-downtown2";
+import {PlayerController} from "./player.js?v=20260830-downtown2";
+import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-downtown2";
 
 const Canvas = document.getElementById("GameCanvas");
 const Renderer = new THREE.WebGLRenderer({canvas:Canvas,antialias:true,powerPreference:"high-performance"});
@@ -18,7 +18,7 @@ Renderer.toneMappingExposure = 1.05;
 
 const Scene = new THREE.Scene();
 const Camera = new THREE.PerspectiveCamera(62,innerWidth/innerHeight,0.05,160);
-Camera.position.set(0,2.2,20);
+Camera.position.set(0,2.2,8);
 
 const Collision = new CollisionWorld();
 const World = new BankWorld(Scene,Collision);
@@ -44,13 +44,13 @@ addEventListener("resize",Resize);
 
 function UpdateObjective(){
   if(!Gear.Equipped){
-    Ui.SetObjective("Get breach gear.");
+    Ui.SetObjective("Get the access device.");
     return;
   }
 
   if(!Vault.IsPassable()){
     const Percent = Math.round((1-Vault.RemainingFraction())*100);
-    Ui.SetObjective("Breach the vault door. "+Percent+"% damaged.");
+    Ui.SetObjective("Override the security gate. "+Percent+"% complete.");
     return;
   }
 
@@ -137,16 +137,10 @@ function Frame(Now){
     Ui.SetStamina(Player.Stamina);
 
     Gear.Update(Player,Ui);
+    Vault.UpdateInteraction(Player,Ui,Gear.Equipped);
 
-    if(Gear.Equipped && Player.ConsumeFire()){
-      const Result = Vault.Pulse(Player);
-      if(Result.Fired) Player.TriggerToolPulse();
-
-      if(Result.Hit && Vault.AlarmTriggered && AlarmTime === 0){
-        AlarmTime = 0.0001;
-      }
-    }else{
-      Player.ConsumeFire();
+    if(Vault.AlarmTriggered && AlarmTime === 0){
+      AlarmTime = 0.0001;
     }
 
     Loot.Update(Player,Ui);
