@@ -141,9 +141,13 @@ class ClipAnimator{
   }
 
   Update(Delta,Speed){
-    if(Speed > 5.0) this.Play("Run");
-    else if(Speed > 0.12) this.Play("Walk");
-    else this.Play("Idle");
+    const Name = Speed > 5.0 ? "Run" : Speed > 0.12 ? "Walk" : "Idle";
+    this.Play(Name);
+
+    if(this.Current){
+      const ReferenceSpeed = Name === "Run" ? 6.6 : Name === "Walk" ? 4.1 : 1;
+      this.Current.setEffectiveTimeScale(Name === "Idle" ? 1 : THREE.MathUtils.clamp(Speed/ReferenceSpeed,0.76,1.18));
+    }
 
     this.Mixer.update(Delta);
     this.Root.updateMatrixWorld(true);
@@ -204,7 +208,7 @@ export class CharacterAssets{
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260830-repair3");
+    const Response = await fetch("assets/models/manifest.json?v=20260830-v011");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
 
     this.Manifest = await Response.json();
