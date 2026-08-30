@@ -1,17 +1,16 @@
 {
   "robber": {
-    "url": "https://raw.githubusercontent.com/Noisemaker111/jgengine/main/apps/dev/public/models/kaykit-adventurers/Rogue_Hooded.glb",
-    "author": "Kay Lousberg",
-    "sourcePack": "KayKit Adventurers",
-    "license": "CC0-1.0",
-    "mirror": "Noisemaker111/jgengine",
-    "clips": ["Idle", "Walking_A", "Running_A"]
-  },
-  "police": {
-    "url": "https://raw.githubusercontent.com/euuuuuuan/fatal-funnel-public/main/packages/renderer/assets/models/quaternius-men/swat.glb",
+    "url": "https://raw.githubusercontent.com/nixocode/vietnam-65-lanes-of-war/main/art/models/hoodie.glb",
     "author": "Quaternius",
     "sourcePack": "Ultimate Modular Men Pack",
     "license": "CC0-1.0",
-    "mirror": "euuuuuuan/fatal-funnel-public"
+    "mirror": "nixocode/vietnam-65-lanes-of-war"
+  },
+  "police": {
+    "url": "https://raw.githubusercontent.com/nixocode/vietnam-65-lanes-of-war/main/art/models/casual.glb",
+    "author": "Quaternius",
+    "sourcePack": "Ultimate Modular Men Pack",
+    "license": "CC0-1.0",
+    "mirror": "nixocode/vietnam-65-lanes-of-war"
   }
 }
