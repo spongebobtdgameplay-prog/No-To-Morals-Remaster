@@ -101,7 +101,7 @@ export class PlayerController{
     this.Animator = CharacterData.Animator;
     this.RightHand = CharacterData.RightHand || null;
     this.ModelFacingOffset = CharacterData.FacingOffset || 0;
-    this.LimbContact = new LimbContactSystem(this.Character,this.Collision);
+    this.LimbContact = null;
     this.CharacterRoot.add(this.Character);
     Scene.add(this.CharacterRoot);
     this.CharacterRoot.position.copy(this.Position);
