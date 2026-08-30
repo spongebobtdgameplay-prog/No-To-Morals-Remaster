@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-downtown2";
+import {GameConfig} from "./config.js?v=20260830-repair3";
 
 export class VaultSystem{
   constructor(Scene,Collision){
@@ -130,6 +130,11 @@ export class GearSystem{
     if(!Player.ConsumeInteract()) return false;
 
     this.Equipped = true;
+
+    if(this.World.GearDisplay){
+      this.World.GearDisplay.visible = false;
+    }
+
     Ui.SetObjective("Reach the security gate.");
     return true;
   }
