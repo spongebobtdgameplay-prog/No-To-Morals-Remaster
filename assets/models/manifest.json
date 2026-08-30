@@ -1,16 +1,17 @@
 {
   "robber": {
-    "url": "https://raw.githubusercontent.com/Seyamalam/blood-league-kickoff/main/public/assets/vendor/quaternius/night-striker.glb",
-    "author": "Quaternius",
-    "sourcePack": "Universal Base Characters",
+    "url": "https://raw.githubusercontent.com/Noisemaker111/jgengine/main/apps/dev/public/models/kaykit-adventurers/Rogue_Hooded.glb",
+    "author": "Kay Lousberg",
+    "sourcePack": "KayKit Adventurers",
     "license": "CC0-1.0",
-    "mirror": "Seyamalam/blood-league-kickoff"
+    "mirror": "Noisemaker111/jgengine",
+    "clips": ["Idle", "Walking_A", "Running_A"]
   },
   "police": {
-    "url": "https://raw.githubusercontent.com/Seyamalam/blood-league-kickoff/main/public/assets/vendor/quaternius/night-striker.glb",
+    "url": "https://raw.githubusercontent.com/euuuuuuan/fatal-funnel-public/main/packages/renderer/assets/models/quaternius-men/swat.glb",
     "author": "Quaternius",
-    "sourcePack": "Universal Base Characters",
+    "sourcePack": "Ultimate Modular Men Pack",
     "license": "CC0-1.0",
-    "mirror": "Seyamalam/blood-league-kickoff"
+    "mirror": "euuuuuuan/fatal-funnel-public"
   }
 }
