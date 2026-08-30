@@ -1,267 +1,127 @@
 import * as THREE from "three";
 import {GameConfig} from "./config.js";
-import {CreateBreachTool} from "./breach-tool.js";
 
 export class VaultSystem{
   constructor(Scene,Collision){
     this.Scene = Scene;
     this.Collision = Collision;
-    this.Cells = [];
-    this.Columns = [];
-    this.Fragments = [];
-    this.CellGroup = new THREE.Group();
-    this.Scene.add(this.CellGroup);
+    this.DoorModel = null;
+    this.MaxIntegrity = 12;
+    this.Integrity = this.MaxIntegrity;
+    this.Open = false;
     this.LastPulse = -99;
     this.AlarmTriggered = false;
-    this.Build();
-  }
-
-  Build(){
-    const TotalWidth = GameConfig.VaultColumns*GameConfig.VaultCellWidth;
-    const TotalHeight = GameConfig.VaultRows*GameConfig.VaultCellHeight;
-    const StartX = -TotalWidth/2+GameConfig.VaultCellWidth/2;
-    const StartY = GameConfig.VaultCellHeight/2;
-    const DoorZ = -5.72;
-
-    const FrameMaterial = new THREE.MeshStandardMaterial({color:0x575f66,roughness:0.34,metalness:0.72});
-    const CellMaterial = new THREE.MeshStandardMaterial({color:0x6d777e,roughness:0.3,metalness:0.78});
-    const DarkMaterial = new THREE.MeshStandardMaterial({color:0x252c31,roughness:0.42,metalness:0.65});
-
-    const FrameParts = [
-      {x:0,y:TotalHeight+0.18,z:DoorZ,w:TotalWidth+0.65,h:0.36,d:0.48},
-      {x:0,y:0.12,z:DoorZ,w:TotalWidth+0.65,h:0.24,d:0.48},
-      {x:-TotalWidth/2-0.18,y:TotalHeight/2,z:DoorZ,w:0.36,h:TotalHeight,d:0.48},
-      {x:TotalWidth/2+0.18,y:TotalHeight/2,z:DoorZ,w:0.36,h:TotalHeight,d:0.48}
-    ];
-
-    for(const Part of FrameParts){
-      const Mesh = new THREE.Mesh(new THREE.BoxGeometry(Part.w,Part.h,Part.d),FrameMaterial);
-      Mesh.position.set(Part.x,Part.y,Part.z);
-      Mesh.castShadow = true;
-      Mesh.receiveShadow = true;
-      this.Scene.add(Mesh);
-    }
-
-    for(let Column=0;Column<GameConfig.VaultColumns;Column+=1){
-      const X = StartX+Column*GameConfig.VaultCellWidth;
-      const Collider = this.Collision.AddBox(
-        X,
-        DoorZ,
-        GameConfig.VaultCellWidth*0.92,
-        GameConfig.VaultThickness,
-        "VaultDoorColumn",
-        {
-          Id:"VaultColumn-"+Column,
-          MinY:0,
-          MaxY:TotalHeight
-        }
-      );
-
-      const ColumnData = {
-        Collider,
-        DestroyedRows:new Set(),
-        Open:false,
-        X
-      };
-      this.Columns.push(ColumnData);
-
-      for(let Row=0;Row<GameConfig.VaultRows;Row+=1){
-        const Mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(
-            GameConfig.VaultCellWidth*0.92,
-            GameConfig.VaultCellHeight*0.92,
-            GameConfig.VaultThickness
-          ),
-          (Column+Row)%2 === 0 ? CellMaterial.clone() : DarkMaterial.clone()
-        );
-
-        Mesh.position.set(X,StartY+Row*GameConfig.VaultCellHeight,DoorZ);
-        Mesh.castShadow = true;
-        Mesh.receiveShadow = true;
-        Mesh.userData.VaultCell = true;
-        Mesh.userData.CellIndex = this.Cells.length;
-        this.CellGroup.add(Mesh);
-        this.Cells.push({Mesh,Column,Row,Integrity:2,Destroyed:false});
+    this.DoorCollider = this.Collision.AddBox(
+      0,
+      -5.72,
+      5.1,
+      0.46,
+      "VaultDoor",
+      {
+        Id:"VaultDoor",
+        MinY:0,
+        MaxY:4.3
       }
-    }
-
-    const Wheel = new THREE.Mesh(
-      new THREE.TorusGeometry(0.72,0.08,10,24),
-      new THREE.MeshStandardMaterial({color:0x252b30,metalness:0.82,roughness:0.28})
     );
-    Wheel.position.set(0,2.1,DoorZ-0.18);
-    this.Scene.add(Wheel);
   }
 
-  OpenColumnIfWalkable(Column){
-    if(Column.Open) return;
-    const RequiredRows = [0,1,2,3];
-    if(!RequiredRows.every(Row=>Column.DestroyedRows.has(Row))) return;
-    Column.Open = true;
-    this.Collision.Remove(Column.Collider);
+  AttachDoor(Model){
+    this.DoorModel = Model || null;
+    return this;
   }
 
-  SpawnFragments(Cell,HitPoint){
-    const Base = Cell.Mesh.position;
+  FlashDoor(){
+    if(!this.DoorModel) return;
 
-    for(let Index=0;Index<3;Index+=1){
-      const Size = 0.075+Math.random()*0.085;
-      const Fragment = new THREE.Mesh(
-        new THREE.BoxGeometry(Size,Size*(0.65+Math.random()*0.6),Size*0.55),
-        new THREE.MeshStandardMaterial({
-          color:Index%2 === 0 ? 0x69737a : 0x30383e,
-          roughness:0.4,
-          metalness:0.7
-        })
-      );
+    const Restore = [];
 
-      Fragment.position.copy(Base);
-      Fragment.position.x += (Math.random()-0.5)*0.2;
-      Fragment.position.y += (Math.random()-0.5)*0.18;
-      Fragment.castShadow = true;
-      this.Scene.add(Fragment);
+    this.DoorModel.traverse(Object=>{
+      if(!Object?.isMesh || !Object.material) return;
+      const Materials = Array.isArray(Object.material) ? Object.material : [Object.material];
 
-      const Away = Fragment.position.clone().sub(HitPoint);
-      if(Away.lengthSq() < 0.001) Away.set(Math.random()-0.5,Math.random()*0.4,1);
-      Away.normalize();
+      for(const Material of Materials){
+        if(!Material?.emissive?.isColor) continue;
 
-      this.Fragments.push({
-        Mesh:Fragment,
-        Velocity:Away.multiplyScalar(1.2+Math.random()*1.6).add(new THREE.Vector3(0,1.1+Math.random(),0)),
-        Spin:new THREE.Vector3(
-          (Math.random()-0.5)*6,
-          (Math.random()-0.5)*6,
-          (Math.random()-0.5)*6
-        ),
-        Age:0,
-        Life:1.15+Math.random()*0.45
-      });
+        Restore.push({
+          Material,
+          Emissive:Material.emissive.clone(),
+          Intensity:Number(Material.emissiveIntensity) || 0
+        });
+
+        Material.emissive.setHex(0x8f3a18);
+        Material.emissiveIntensity = 0.72;
+      }
+    });
+
+    setTimeout(()=>{
+      for(const Entry of Restore){
+        Entry.Material.emissive.copy(Entry.Emissive);
+        Entry.Material.emissiveIntensity = Entry.Intensity;
+      }
+    },80);
+  }
+
+  OpenDoor(){
+    if(this.Open) return;
+
+    this.Open = true;
+    this.Integrity = 0;
+    this.Collision.Remove(this.DoorCollider);
+
+    if(this.DoorModel){
+      this.DoorModel.visible = false;
     }
-  }
-
-  DestroyCell(Cell,HitPoint){
-    Cell.Destroyed = true;
-    Cell.Mesh.visible = false;
-
-    const Column = this.Columns[Cell.Column];
-    Column.DestroyedRows.add(Cell.Row);
-    this.OpenColumnIfWalkable(Column);
-    this.SpawnFragments(Cell,HitPoint);
   }
 
   Pulse(Player){
     const Now = performance.now()/1000;
-    if(Now-this.LastPulse < GameConfig.BreachCooldown) return {Fired:false};
+
+    if(Now-this.LastPulse < GameConfig.BreachCooldown){
+      return {Fired:false};
+    }
+
     this.LastPulse = Now;
 
-    const Ray = Player.GetAimRay();
-    const Raycaster = new THREE.Raycaster(Ray.Origin,Ray.Direction,0,25);
-    const Targets = this.Cells.filter(Cell=>!Cell.Destroyed).map(Cell=>Cell.Mesh);
-    const Hits = Raycaster.intersectObjects(Targets,false);
-
-    if(!Hits.length){
-      const End = Ray.Origin.clone().addScaledVector(Ray.Direction,18);
-      this.MakePulseEffect(Ray.Origin,End);
+    if(this.Open || !this.DoorModel){
       return {Fired:true,Hit:false};
     }
 
-    const HitPoint = Hits[0].point;
+    const Ray = Player.GetAimRay();
+    const Raycaster = new THREE.Raycaster(Ray.Origin,Ray.Direction,0,25);
+    const Hits = Raycaster.intersectObject(this.DoorModel,true);
+
+    if(!Hits.length){
+      return {Fired:true,Hit:false};
+    }
+
     this.AlarmTriggered = true;
+    this.Integrity = Math.max(0,this.Integrity-1);
+    this.FlashDoor();
 
-    const ScratchPosition = new THREE.Vector3();
-
-    for(const Cell of this.Cells){
-      if(Cell.Destroyed) continue;
-
-      const Distance = Cell.Mesh.getWorldPosition(ScratchPosition).distanceTo(HitPoint);
-      if(Distance > GameConfig.BreachRadius) continue;
-
-      const Damage = Distance < GameConfig.BreachRadius*0.38 ? 2 : 1;
-      Cell.Integrity -= Damage;
-      Cell.Mesh.material.emissive = new THREE.Color(0x6a2e14);
-      Cell.Mesh.material.emissiveIntensity = 0.65;
-
-      if(Cell.Integrity <= 0) this.DestroyCell(Cell,HitPoint);
+    if(this.Integrity <= 0){
+      this.OpenDoor();
     }
 
-    this.MakePulseEffect(Ray.Origin,HitPoint);
-    return {Fired:true,Hit:true,Point:HitPoint};
+    return {
+      Fired:true,
+      Hit:true,
+      Point:Hits[0].point.clone()
+    };
   }
 
-  MakePulseEffect(Start,End){
-    const Geometry = new THREE.BufferGeometry().setFromPoints([Start,End]);
-    const Material = new THREE.LineBasicMaterial({color:0x66d4ff,transparent:true,opacity:0.95});
-    const Line = new THREE.Line(Geometry,Material);
-    this.Scene.add(Line);
-
-    setTimeout(()=>{
-      this.Scene.remove(Line);
-      Geometry.dispose();
-      Material.dispose();
-    },70);
-  }
-
-  Update(Delta){
-    for(let Index=this.Fragments.length-1;Index>=0;Index-=1){
-      const Fragment = this.Fragments[Index];
-      Fragment.Age += Delta;
-      Fragment.Velocity.y -= 5.8*Delta;
-      Fragment.Mesh.position.addScaledVector(Fragment.Velocity,Delta);
-      Fragment.Mesh.rotation.x += Fragment.Spin.x*Delta;
-      Fragment.Mesh.rotation.y += Fragment.Spin.y*Delta;
-      Fragment.Mesh.rotation.z += Fragment.Spin.z*Delta;
-
-      if(Fragment.Mesh.position.y < 0.06){
-        Fragment.Mesh.position.y = 0.06;
-        Fragment.Velocity.y = Math.abs(Fragment.Velocity.y)*0.25;
-        Fragment.Velocity.x *= 0.72;
-        Fragment.Velocity.z *= 0.72;
-      }
-
-      if(Fragment.Age >= Fragment.Life){
-        this.Scene.remove(Fragment.Mesh);
-        Fragment.Mesh.geometry.dispose();
-        Fragment.Mesh.material.dispose();
-        this.Fragments.splice(Index,1);
-      }
-    }
+  Update(){
   }
 
   GetPassageX(){
-    let Start = -1;
-    let BestStart = -1;
-    let BestLength = 0;
-
-    for(let Index=0;Index<=this.Columns.length;Index+=1){
-      const Open = Index < this.Columns.length && this.Columns[Index].Open;
-      if(Open && Start < 0) Start = Index;
-
-      if((!Open || Index === this.Columns.length) && Start >= 0){
-        const Length = Index-Start;
-
-        if(Length > BestLength){
-          BestLength = Length;
-          BestStart = Start;
-        }
-
-        Start = -1;
-      }
-    }
-
-    if(BestLength < 2) return null;
-
-    const Left = this.Columns[BestStart].X;
-    const Right = this.Columns[BestStart+BestLength-1].X;
-    return (Left+Right)*0.5;
+    return this.Open ? 0 : null;
   }
 
   IsPassable(){
-    return Number.isFinite(this.GetPassageX());
+    return this.Open;
   }
 
   RemainingFraction(){
-    const Remaining = this.Cells.filter(Cell=>!Cell.Destroyed).length;
-    return Remaining/this.Cells.length;
+    return this.Integrity/this.MaxIntegrity;
   }
 }
 
@@ -281,7 +141,7 @@ export class GearSystem{
       if(Player.ConsumeInteract()){
         this.Equipped = true;
         if(this.World.GearDisplay) this.World.GearDisplay.visible = false;
-        Player.EquipBreachTool(CreateBreachTool());
+        Player.EquipBreachTool(this.World.CreateBreachGear());
         Ui.SetObjective("Breach the vault surface.");
       }
 
@@ -306,16 +166,30 @@ export class LootSystem{
   }
 
   Update(Player,Ui){
-    for(const Bag of this.World.Loot){
-      if(Bag.userData.Collected) continue;
+    let Closest = null;
+    let ClosestDistance = Infinity;
 
-      if(Player.Position.distanceTo(Bag.position) < 1.0){
-        Bag.userData.Collected = true;
-        Bag.visible = false;
-        this.Count += 1;
-        Ui.SetLoot(this.Count,GameConfig.LootCount);
+    for(const Loot of this.World.Loot){
+      if(Loot.userData.Collected) continue;
+
+      const Distance = Player.Position.distanceTo(Loot.position);
+
+      if(Distance < 1.35 && Distance < ClosestDistance){
+        Closest = Loot;
+        ClosestDistance = Distance;
       }
     }
+
+    if(!Closest) return;
+
+    Ui.SetPrompt("E  TAKE LOOT");
+
+    if(!Player.ConsumeInteract()) return;
+
+    Closest.userData.Collected = true;
+    Closest.visible = false;
+    this.Count += 1;
+    Ui.SetLoot(this.Count,GameConfig.LootCount);
   }
 }
 
