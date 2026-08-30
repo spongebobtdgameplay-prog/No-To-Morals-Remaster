@@ -15,19 +15,38 @@ function FindBone(Root,Patterns){
   return Result;
 }
 
-function CloneAndStyleMaterial(Material,Role){
+function FindClip(Animations,Names){
+  for(const Name of Names){
+    const Exact = Animations.find(Clip=>String(Clip.name || "").toLowerCase() === Name.toLowerCase());
+    if(Exact) return Exact;
+  }
+
+  for(const Name of Names){
+    const Lower = Name.toLowerCase();
+    const Partial = Animations.find(Clip=>{
+      const ClipName = String(Clip.name || "").toLowerCase();
+      return ClipName.includes(Lower) && !/aim|shoot|combat|attack|weapon/.test(ClipName);
+    });
+
+    if(Partial) return Partial;
+  }
+
+  return null;
+}
+
+function CloneMaterial(Material,Role){
   const Clone = Material.clone();
 
   if(Clone.color){
     if(Role === "Robber"){
-      Clone.color.lerp(new THREE.Color(0x101316),0.28);
+      Clone.color.lerp(new THREE.Color(0x111418),0.68);
     }else{
-      Clone.color.lerp(new THREE.Color(0x20364f),0.18);
+      Clone.color.lerp(new THREE.Color(0x20384f),0.34);
     }
   }
 
   if("roughness" in Clone && Number.isFinite(Clone.roughness)){
-    Clone.roughness = Math.max(Clone.roughness,0.5);
+    Clone.roughness = Math.max(Clone.roughness,0.54);
   }
 
   return Clone;
@@ -38,9 +57,9 @@ function StyleCharacter(Model,Role){
     if(!Object.isMesh || !Object.material) return;
 
     if(Array.isArray(Object.material)){
-      Object.material = Object.material.map(Material=>CloneAndStyleMaterial(Material,Role));
+      Object.material = Object.material.map(Material=>CloneMaterial(Material,Role));
     }else{
-      Object.material = CloneAndStyleMaterial(Object.material,Role);
+      Object.material = CloneMaterial(Object.material,Role);
     }
 
     Object.castShadow = true;
@@ -54,7 +73,10 @@ function RemoveUnwantedAccessories(Model){
 
   Model.traverse(Object=>{
     const Name = String(Object.name || "").toLowerCase();
-    if(/backpack|rucksack|quiver|shield|sword|dagger|axe|staff|wand/.test(Name)) Remove.push(Object);
+
+    if(/backpack|rucksack|quiver/.test(Name)){
+      Remove.push(Object);
+    }
   });
 
   for(const Object of Remove){
@@ -78,48 +100,34 @@ function NormalizeCharacter(Model){
   Model.updateMatrixWorld(true);
 }
 
-function FindClip(Animations,Names){
-  for(const Name of Names){
-    const Exact = Animations.find(Clip=>Clip.name === Name);
-    if(Exact) return Exact;
-  }
-
-  for(const Name of Names){
-    const Lower = Name.toLowerCase();
-    const Partial = Animations.find(Clip=>String(Clip.name || "").toLowerCase().includes(Lower));
-    if(Partial) return Partial;
-  }
-
-  return null;
-}
-
-class ClipHumanoidAnimator{
+class ClipAnimator{
   constructor(Root,Animations){
     this.Root = Root;
     this.Mixer = new THREE.AnimationMixer(Root);
     this.Current = null;
+
     this.Actions = {
-      Idle:this.CreateAction(FindClip(Animations,["Idle","Unarmed_Idle"])),
-      Walk:this.CreateAction(FindClip(Animations,["Walking_A","Walking_B","Walking_C","Walk"])),
-      Run:this.CreateAction(FindClip(Animations,["Running_A","Running_B","Run"]))
+      Idle:this.CreateAction(FindClip(Animations,["Idle","Idle_1","Stand"])),
+      Walk:this.CreateAction(FindClip(Animations,["Walk","Walking","Walking_A"])),
+      Run:this.CreateAction(FindClip(Animations,["Run","Running","Running_A"]))
     };
 
-    this.Play("Idle",0);
+    if(this.Actions.Idle) this.Play("Idle",0);
   }
 
   CreateAction(Clip){
     if(!Clip) return null;
+
     const Action = this.Mixer.clipAction(Clip);
     Action.enabled = true;
     Action.setLoop(THREE.LoopRepeat,Infinity);
     return Action;
   }
 
-  Play(Name,Fade=0.16){
+  Play(Name,Fade=0.14){
     const Next = this.Actions[Name];
-    if(!Next || this.Current === Next) return;
+    if(!Next || Next === this.Current) return;
 
-    Next.enabled = true;
     Next.reset();
     Next.setEffectiveWeight(1);
     Next.setEffectiveTimeScale(1);
@@ -137,18 +145,12 @@ class ClipHumanoidAnimator{
     else if(Speed > 0.12) this.Play("Walk");
     else this.Play("Idle");
 
-    if(this.Current === this.Actions.Walk){
-      this.Current.setEffectiveTimeScale(THREE.MathUtils.clamp(Speed/4.1,0.72,1.35));
-    }else if(this.Current === this.Actions.Run){
-      this.Current.setEffectiveTimeScale(THREE.MathUtils.clamp(Speed/6.6,0.8,1.25));
-    }
-
     this.Mixer.update(Delta);
     this.Root.updateMatrixWorld(true);
   }
 }
 
-class BoneFallbackAnimator{
+class BoneAnimator{
   constructor(Root){
     this.Root = Root;
     this.Time = 0;
@@ -156,7 +158,8 @@ class BoneFallbackAnimator{
       LeftArm:FindBone(Root,[/left.*upperarm/,/upperarm.*l/,/armupperl/,/leftarm$/]),
       RightArm:FindBone(Root,[/right.*upperarm/,/upperarm.*r/,/armupperr/,/rightarm$/]),
       LeftLeg:FindBone(Root,[/left.*upleg/,/left.*thigh/,/upleg.*l/,/thigh.*l/]),
-      RightLeg:FindBone(Root,[/right.*upleg/,/right.*thigh/,/upleg.*r/,/thigh.*r/])
+      RightLeg:FindBone(Root,[/right.*upleg/,/right.*thigh/,/upleg.*r/,/thigh.*r/]),
+      Spine:FindBone(Root,[/spine/,/chest/,/torso/])
     };
     this.Base = new Map();
 
@@ -165,22 +168,29 @@ class BoneFallbackAnimator{
     }
   }
 
-  Rotate(Bone,X){
+  Rotate(Bone,X,Y=0,Z=0){
     if(!Bone) return;
+
     const Base = this.Base.get(Bone);
     if(Base) Bone.quaternion.copy(Base);
-    Bone.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(X,0,0,"XYZ")));
+
+    const Extra = new THREE.Quaternion().setFromEuler(new THREE.Euler(X,Y,Z,"XYZ"));
+    Bone.quaternion.multiply(Extra);
   }
 
-  Update(Delta,Speed){
-    this.Time += Delta*Math.max(2.8,Speed*1.3);
-    const Move = THREE.MathUtils.clamp(Speed/6.6,0,1);
-    const Swing = Math.sin(this.Time)*Move*0.55;
+  Update(Delta,Speed,TurnRate=0){
+    this.Time += Delta*Math.max(2.7,Speed*1.26);
 
-    this.Rotate(this.Bones.LeftLeg,Swing);
-    this.Rotate(this.Bones.RightLeg,-Swing);
-    this.Rotate(this.Bones.LeftArm,-Swing*0.72);
-    this.Rotate(this.Bones.RightArm,Swing*0.72);
+    const Move = THREE.MathUtils.clamp(Speed/6.6,0,1);
+    const Run = THREE.MathUtils.smoothstep(Speed,4.2,6.6);
+    const Swing = Math.sin(this.Time)*Move;
+
+    this.Rotate(this.Bones.LeftLeg,Swing*(0.45+Run*0.18));
+    this.Rotate(this.Bones.RightLeg,-Swing*(0.45+Run*0.18));
+    this.Rotate(this.Bones.LeftArm,-Swing*(0.34+Run*0.14),0,0.025);
+    this.Rotate(this.Bones.RightArm,Swing*(0.34+Run*0.14),0,-0.025);
+    this.Rotate(this.Bones.Spine,Move*0.018,TurnRate*0.012,-TurnRate*0.008);
+
     this.Root.updateMatrixWorld(true);
   }
 }
@@ -194,7 +204,7 @@ export class CharacterAssets{
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260830-realworld1");
+    const Response = await fetch("assets/models/manifest.json?v=20260830-downtown2");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
 
     this.Manifest = await Response.json();
@@ -226,9 +236,13 @@ export class CharacterAssets{
   Create(Role){
     const Key = Role === "Police" ? "police" : "robber";
     const Source = this.Models.get(Key);
-    if(!Source?.Scene) throw new Error("Required character model is unavailable: "+Key);
+
+    if(!Source?.Scene){
+      throw new Error("Required character model is unavailable: "+Key);
+    }
 
     const Model = SkeletonClone(Source.Scene);
+
     RemoveUnwantedAccessories(Model);
     StyleCharacter(Model,Role);
     NormalizeCharacter(Model);
@@ -240,17 +254,17 @@ export class CharacterAssets{
       /handr/
     ]);
 
-    const HasMovementClips = Boolean(
-      FindClip(Source.Animations,["Idle","Unarmed_Idle"]) &&
-      FindClip(Source.Animations,["Walking_A","Walking_B","Walking_C","Walk"]) &&
-      FindClip(Source.Animations,["Running_A","Running_B","Run"])
+    const HasGenericMovement = Boolean(
+      FindClip(Source.Animations,["Idle","Idle_1","Stand"]) &&
+      FindClip(Source.Animations,["Walk","Walking","Walking_A"]) &&
+      FindClip(Source.Animations,["Run","Running","Running_A"])
     );
 
     return {
       Model,
-      Animator:HasMovementClips
-        ? new ClipHumanoidAnimator(Model,Source.Animations)
-        : new BoneFallbackAnimator(Model),
+      Animator:HasGenericMovement
+        ? new ClipAnimator(Model,Source.Animations)
+        : new BoneAnimator(Model),
       RightHand,
       FacingOffset:Math.PI
     };
