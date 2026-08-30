@@ -1,6 +1,7 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v013";
+import {GameConfig} from "./config.js?v=20260830-v014";
 import {LimbContactSystem} from "./animation-contact.js?v=20260830-v012";
+import {InfinityMovementController} from "./infinity-movement.js?v=20260830-v014";
 
 function ExpAlpha(Delta,Rate){
   return 1-Math.exp(-Rate*Delta);
@@ -17,6 +18,7 @@ export class PlayerController{
     this.Camera = Camera;
     this.Canvas = Canvas;
     this.Collision = Collision;
+    this.Movement = new InfinityMovementController(Camera,Collision);
     this.Position = new THREE.Vector3(0,0,6);
     this.Keys = new Set();
     this.TargetYaw = Math.PI;
@@ -228,37 +230,8 @@ export class PlayerController{
       ExpAlpha(Delta,GameConfig.CameraZoomDamping)
     );
 
-    let ForwardInput = 0;
-    let RightInput = 0;
-
-    if(this.Keys.has("KeyW")) ForwardInput += 1;
-    if(this.Keys.has("KeyS")) ForwardInput -= 1;
-    if(this.Keys.has("KeyD")) RightInput += 1;
-    if(this.Keys.has("KeyA")) RightInput -= 1;
-
-    const InputLength = Math.hypot(ForwardInput,RightInput);
-    if(InputLength > 1){
-      ForwardInput /= InputLength;
-      RightInput /= InputLength;
-    }
-
-    this.Camera.getWorldDirection(this.MoveForward);
-    this.MoveForward.y = 0;
-
-    if(this.MoveForward.lengthSq() < 0.0001){
-      this.MoveForward.set(Math.sin(this.Yaw),0,Math.cos(this.Yaw));
-    }else{
-      this.MoveForward.normalize();
-    }
-
-    this.MoveRight.crossVectors(this.MoveForward,this.UpVector).normalize();
-
-    this.MoveDirection.set(0,0,0)
-      .addScaledVector(this.MoveForward,ForwardInput)
-      .addScaledVector(this.MoveRight,RightInput);
-
-    const Moving = this.MoveDirection.lengthSq() > 0.0001;
-    if(Moving) this.MoveDirection.normalize();
+    const Input = this.Movement.ReadInput(this.Keys);
+    const Moving = Input.Moving;
 
     const WantsSprint = (this.Keys.has("ShiftLeft") || this.Keys.has("ShiftRight")) && Moving;
     let Sprinting = WantsSprint && this.Stamina > 0.5;
@@ -272,24 +245,25 @@ export class PlayerController{
     }
 
     const Speed = Moving ? (Sprinting ? GameConfig.SprintSpeed : GameConfig.WalkSpeed) : 0;
-    this.LastSpeed = Speed;
-
-    const HorizontalDelta = this.MoveDirection.clone().multiplyScalar(Speed*Delta);
-    const Result = this.Collision.ResolveMove(
+    const Result = this.Movement.Move(
       this.Position,
-      HorizontalDelta,
-      GameConfig.PlayerRadius,
+      Input.Forward,
+      Input.Right,
+      Speed*Delta,
       {
-        MinY:this.Position.y+0.035,
-        MaxY:this.Position.y+GameConfig.PlayerColliderHeight,
+        Radius:GameConfig.PlayerRadius,
+        ColliderHeight:GameConfig.PlayerColliderHeight,
         MaxStepHeight:GameConfig.MaxStepHeight,
         Skin:GameConfig.CollisionSkin,
-        AllowSlide:true
+        CanStep:this.VerticalVelocity <= 0.2
       }
     );
 
+    this.MoveDirection.copy(Result.DesiredDirection);
     this.Position.x = Result.Position.x;
     this.Position.z = Result.Position.z;
+    const ResolvedSpeed = Delta > 0.0001 ? Result.Resolved.length()/Delta : 0;
+    this.LastSpeed = Moving ? Math.min(Speed,ResolvedSpeed) : 0;
 
     if(Result.Stepped && Number.isFinite(Result.StepHeight) && this.VerticalVelocity <= 0.2){
       this.Position.y = Math.max(this.Position.y,Result.StepHeight);
@@ -330,11 +304,15 @@ export class PlayerController{
 
     let TurnRate = 0;
 
-    if(Moving){
-      const TargetFacing = Math.atan2(this.MoveDirection.x,this.MoveDirection.z);
+    const FacingDirection = Result.Resolved.lengthSq() > 0.000001
+      ? Result.Resolved
+      : this.MoveDirection;
+
+    if(Moving && FacingDirection.lengthSq() > 0.000001){
+      const TargetFacing = Math.atan2(FacingDirection.x,FacingDirection.z);
       const Difference = NormalizeAngle(TargetFacing-this.LastFacing);
       TurnRate = Difference/Math.max(Delta,0.001);
-      this.LastFacing += Difference*ExpAlpha(Delta,22);
+      this.LastFacing += Difference*ExpAlpha(Delta,13);
     }
 
     this.CharacterRoot.position.copy(this.Position);

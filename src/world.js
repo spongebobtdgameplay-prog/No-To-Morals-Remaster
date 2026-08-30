@@ -7,6 +7,7 @@ export class BankWorld{
     this.Collision = Collision;
     this.Props = new PropLibrary();
     this.Loot = [];
+    this.PropRoots = [];
     this.GearPosition = new THREE.Vector3(-8,0,5.6);
     this.GearDisplay = null;
     this.VaultDoorModel = null;
@@ -66,8 +67,9 @@ export class BankWorld{
     const Root = this.Props.Create(Key,Options);
     this.Scene.add(Root);
     Root.updateWorldMatrix(true,true);
+    this.PropRoots.push(Root);
 
-    if(this.Collision && Options.Collision === true){
+    if(this.Collision && Options.Collision !== false){
       Root.userData.Collision = this.Collision.AddModel(
         Root,
         Options.CollisionType || "Prop:"+Key,
@@ -100,7 +102,7 @@ export class BankWorld{
     return this.AddProp("BrickPlain",{
       Position:new THREE.Vector3(X,Y,Z),
       RotationY,
-      Collision:false
+      Collision:true
     });
   }
 
@@ -115,7 +117,7 @@ export class BankWorld{
       for(let Z=-8;Z<=8;Z+=4){
         this.AddProp("FloorTile",{
           Position:new THREE.Vector3(X,-0.1,Z),
-          Collision:false,
+          Collision:true,
           CastShadow:false
         });
       }
@@ -128,7 +130,7 @@ export class BankWorld{
         this.AddProp("FloorTile",{
           Position:new THREE.Vector3(X,3.08,Z),
           RotationX:Math.PI,
-          Collision:false,
+          Collision:true,
           CastShadow:false
         });
       }
@@ -152,7 +154,7 @@ export class BankWorld{
     for(const X of [-9,-5,5,9]){
       this.AddProp("BrickWindow",{
         Position:new THREE.Vector3(X,0,10),
-        Collision:false
+        Collision:true
       });
     }
 
@@ -161,7 +163,7 @@ export class BankWorld{
 
     this.AddProp("DoorFrame",{
       Position:new THREE.Vector3(0,0,9.72),
-      Collision:false
+      Collision:true
     });
 
     this.AddPlainWallStack(-1.15,10.85,Math.PI/2);
@@ -170,7 +172,7 @@ export class BankWorld{
     this.AddProp("FloorTile",{
       Position:new THREE.Vector3(0,3.08,10.9),
       RotationX:Math.PI,
-      Collision:false,
+      Collision:true,
       CastShadow:false
     });
 
@@ -197,7 +199,7 @@ export class BankWorld{
         this.AddProp("BrickWindowTrim",{
           Position:new THREE.Vector3(X,0,Z),
           RotationY,
-          Collision:false
+          Collision:true
         });
       }
 
@@ -212,7 +214,7 @@ export class BankWorld{
 
     this.VaultDoorModel = this.AddProp("MetalWindow",{
       Position:new THREE.Vector3(0,0,-4),
-      Collision:false
+      Collision:true
     });
 
     this.AddWallCollider(-6.5,-4,9,0.34,"VaultWall");
@@ -255,7 +257,7 @@ export class BankWorld{
     for(let X=-22;X<=22;X+=4){
       this.AddProp("FloorTile",{
         Position:new THREE.Vector3(X,-0.1,12),
-        Collision:false,
+        Collision:true,
         CastShadow:false
       });
     }
@@ -266,14 +268,14 @@ export class BankWorld{
       this.AddProp("Street2Lane",{
         Position:new THREE.Vector3(X,-0.15,17),
         RotationY:Math.PI/2,
-        Collision:false,
+        Collision:true,
         CastShadow:false
       });
     }
 
     this.AddProp("Manhole",{
       Position:new THREE.Vector3(5.5,0.01,17),
-      Collision:false,
+      Collision:true,
       CastShadow:false
     });
   }
@@ -282,7 +284,7 @@ export class BankWorld{
     for(let X=-22;X<=22;X+=4){
       this.AddProp("FloorTile",{
         Position:new THREE.Vector3(X,-0.1,22),
-        Collision:false,
+        Collision:true,
         CastShadow:false
       });
     }
@@ -308,7 +310,7 @@ export class BankWorld{
     for(const X of [-10,-6,-2,2,6,10]){
       this.AddProp("Bollard",{
         Position:new THREE.Vector3(X,0,12.45),
-        Collision:false
+        Collision:true
       });
     }
 
@@ -337,7 +339,7 @@ export class BankWorld{
     this.GearDisplay = this.AddProp("LootBox",{
       Position:new THREE.Vector3(this.GearPosition.x,0,this.GearPosition.z),
       TargetWidth:0.58,
-      Collision:false
+      Collision:true
     });
   }
 
@@ -363,6 +365,19 @@ export class BankWorld{
     }
   }
 
+  ValidateCollisionCoverage(){
+    const Missing = this.PropRoots.filter(Root=>Root.visible && !Root.userData.Collision);
+    if(Missing.length){
+      const Names = Missing.slice(0,8).map(Root=>Root.name || Root.userData?.SourceKey || "Unnamed").join(", ");
+      throw new Error("Visible world props missing collision: "+Names);
+    }
+
+    return {
+      Props:this.PropRoots.length,
+      Colliders:this.PropRoots.filter(Root=>Root.userData.Collision).length
+    };
+  }
+
   async LoadModels(){
     await this.Props.Load();
 
@@ -379,5 +394,6 @@ export class BankWorld{
     this.BuildStreetBuildings();
     this.BuildLobbyDetails();
     this.BuildLoot();
+    this.CollisionCoverage = this.ValidateCollisionCoverage();
   }
 }

@@ -9,6 +9,16 @@ function VerticalOverlap(Bounds,MinY,MaxY){
   return MaxY > Bounds.min.y+0.0001 && MinY < Bounds.max.y-0.0001;
 }
 
+function SweepTouchesBounds(Start,Delta,Radius,Bounds){
+  const EndX = Start.x+Delta.x;
+  const EndZ = Start.z+Delta.z;
+  const MinX = Math.min(Start.x,EndX)-Radius-0.02;
+  const MaxX = Math.max(Start.x,EndX)+Radius+0.02;
+  const MinZ = Math.min(Start.z,EndZ)-Radius-0.02;
+  const MaxZ = Math.max(Start.z,EndZ)+Radius+0.02;
+  return Bounds.max.x >= MinX && Bounds.min.x <= MaxX && Bounds.max.z >= MinZ && Bounds.min.z <= MaxZ;
+}
+
 function SweepExpandedAabb(Start,Delta,Bounds,Radius){
   const MinX = Bounds.min.x-Radius;
   const MaxX = Bounds.max.x+Radius;
@@ -135,6 +145,8 @@ export class CollisionWorld{
     this.RayDirection = new THREE.Vector3();
     this.RaySide = new THREE.Vector3();
     this.RayOrigin = new THREE.Vector3();
+    this.LandingOrigin = new THREE.Vector3();
+    this.LandingDirection = new THREE.Vector3(0,-1,0);
   }
 
   AddBox(CenterX,CenterZ,Width,Depth,Type="Solid",Options={}){
@@ -192,8 +204,8 @@ export class CollisionWorld{
     this.RaySide.set(this.RayDirection.z,0,-this.RayDirection.x).normalize();
     const Height = Number.isFinite(MinY) && Number.isFinite(MaxY) ? Math.max(0.2,MaxY-MinY) : 1.68;
     const BaseY = Number.isFinite(MinY) ? MinY : Start.y-0.84;
-    const HeightFractions = [0.07,0.16,0.29,0.45,0.63,0.81,0.94];
-    const LateralRatios = [-0.94,-0.48,0,0.48,0.94];
+    const HeightFractions = [0.055,0.11,0.18,0.27,0.38,0.50,0.63,0.77,0.90];
+    const LateralRatios = [-0.96,-0.64,-0.32,0,0.32,0.64,0.96];
     let Best = null;
 
     for(const HeightFraction of HeightFractions){
@@ -235,6 +247,7 @@ export class CollisionWorld{
       if(!this.IsActive(Collider)) continue;
       if(CameraOnly && !Collider.CameraBlock) continue;
       if(!VerticalOverlap(Collider,MinY,MaxY)) continue;
+      if(!SweepTouchesBounds(Start,Delta,Radius,Collider)) continue;
 
       const Hit = Collider.Kind === "Model"
         ? this.FindModelSweep(Start,Delta,Radius,Collider,MinY,MaxY)
@@ -256,7 +269,17 @@ export class CollisionWorld{
     const RaisedMinY = Top+0.025;
     const RaisedMaxY = RaisedMinY+Height;
     if(this.FindSweep(Start,Delta,Radius,false,RaisedMinY,RaisedMaxY)) return null;
-    return {Position:Start.clone().add(Delta),Hit,Stepped:true,StepHeight:Top};
+    const Position = Start.clone().add(Delta);
+    const Resolved = Position.clone().sub(Start);
+    Resolved.y = 0;
+    return {
+      Position,
+      Resolved,
+      Hit,
+      Normal:Hit?.Normal?.clone?.() || new THREE.Vector3(),
+      Stepped:true,
+      StepHeight:Top
+    };
   }
 
   ResolveMove(Start,Delta,Radius,Vertical=null){
@@ -264,20 +287,20 @@ export class CollisionWorld{
     const Desired = Delta.clone();
     Desired.y = 0;
     let Remaining = Desired.clone();
-    const Skin = Math.max(0.002,Number(Vertical?.Skin) || 0.008);
+    const Skin = Math.max(0.002,Number(Vertical?.Skin) || 0.006);
     const MinY = Number.isFinite(Vertical?.MinY) ? Vertical.MinY : -Infinity;
     const MaxY = Number.isFinite(Vertical?.MaxY) ? Vertical.MaxY : Infinity;
-    const MaxStepHeight = Number.isFinite(Vertical?.MaxStepHeight) ? Vertical.MaxStepHeight : 0.32;
+    const MaxStepHeight = Number.isFinite(Vertical?.MaxStepHeight) ? Vertical.MaxStepHeight : 0.30;
     const AllowSlide = Vertical?.AllowSlide !== false;
     let LastHit = null;
 
     const FirstHit = this.FindSweep(Position,Remaining,Radius,false,MinY,MaxY);
-    if(FirstHit && Number.isFinite(MinY) && Number.isFinite(MaxY)){
+    if(FirstHit && MaxStepHeight > 0.001 && Number.isFinite(MinY) && Number.isFinite(MaxY)){
       const Step = this.TryStep(Position,Remaining,Radius,MinY,MaxY,FirstHit,MaxStepHeight);
       if(Step) return Step;
     }
 
-    for(let Iteration=0;Iteration<4;Iteration+=1){
+    for(let Iteration=0;Iteration<5;Iteration+=1){
       if(Remaining.lengthSq() < 0.0000001) break;
       const Hit = this.FindSweep(Position,Remaining,Radius,false,MinY,MaxY);
       if(!Hit){
@@ -308,7 +331,16 @@ export class CollisionWorld{
       Remaining.copy(Left).multiplyScalar(0.995);
     }
 
-    return {Position,Hit:LastHit,Stepped:false,StepHeight:null};
+    const Resolved = Position.clone().sub(Start);
+    Resolved.y = 0;
+    return {
+      Position,
+      Resolved,
+      Hit:LastHit,
+      Normal:LastHit?.Normal?.clone?.() || new THREE.Vector3(),
+      Stepped:false,
+      StepHeight:null
+    };
   }
 
   ResolveSegment(Start,End,Radius=0.06,Filter=null){
@@ -331,12 +363,59 @@ export class CollisionWorld{
     return {Hit:true,End:SafeEnd,Normal:Best.Normal.clone(),Collider:Best.Collider};
   }
 
+  FindModelLandingHeight(Position,Radius,Collider,PreviousFeetY,NextFeetY){
+    const ClosestX = THREE.MathUtils.clamp(Position.x,Collider.min.x,Collider.max.x);
+    const ClosestZ = THREE.MathUtils.clamp(Position.z,Collider.min.z,Collider.max.z);
+    const DX = Position.x-ClosestX;
+    const DZ = Position.z-ClosestZ;
+    if(DX*DX+DZ*DZ > Radius*Radius) return null;
+
+    const Ring = Radius*0.62;
+    const Diagonal = Ring*0.70710678;
+    const Offsets = [
+      [0,0],
+      [Ring,0],[-Ring,0],[0,Ring],[0,-Ring],
+      [Diagonal,Diagonal],[-Diagonal,Diagonal],[Diagonal,-Diagonal],[-Diagonal,-Diagonal]
+    ];
+    const StartY = PreviousFeetY+0.10;
+    const Far = Math.max(0.24,StartY-NextFeetY+0.14);
+    let BestHeight = null;
+
+    for(const [OffsetX,OffsetZ] of Offsets){
+      this.LandingOrigin.set(Position.x+OffsetX,StartY,Position.z+OffsetZ);
+      this.Raycaster.near = 0;
+      this.Raycaster.far = Far;
+      this.Raycaster.set(this.LandingOrigin,this.LandingDirection);
+      const Hits = this.Raycaster.intersectObject(Collider.CollisionObject,true);
+
+      for(const Hit of Hits){
+        if(!VisibleCollisionMesh(Hit.object)) continue;
+        const Height = Hit.point.y;
+        if(Height > PreviousFeetY+0.08 || Height < NextFeetY-0.015) continue;
+        if(!Number.isFinite(BestHeight) || Height > BestHeight) BestHeight = Height;
+        break;
+      }
+    }
+
+    return BestHeight;
+  }
+
   FindLandingHeight(Position,Radius,PreviousFeetY,NextFeetY){
     let BestHeight = 0;
     let Found = NextFeetY <= 0 && PreviousFeetY >= -0.06;
 
     for(const Collider of this.Colliders){
       if(!this.IsActive(Collider)) continue;
+
+      if(Collider.Kind === "Model"){
+        const ModelHeight = this.FindModelLandingHeight(Position,Radius,Collider,PreviousFeetY,NextFeetY);
+        if(Number.isFinite(ModelHeight) && (!Found || ModelHeight > BestHeight)){
+          BestHeight = ModelHeight;
+          Found = true;
+        }
+        continue;
+      }
+
       const Top = Collider.max.y;
       if(Top > PreviousFeetY+0.08 || Top < NextFeetY-0.015) continue;
 
@@ -357,18 +436,39 @@ export class CollisionWorld{
 
   ClipSegment(Start,Desired,Radius=0.12){
     let Best = null;
+    const Delta = Desired.clone().sub(Start);
+    const Distance = Math.max(Delta.length(),0.001);
+    const Direction = Delta.clone().normalize();
 
     for(const Collider of this.Colliders){
       if(!this.IsActive(Collider) || !Collider.CameraBlock) continue;
-      const Hit = SegmentExpandedBoundsHit(Start,Desired,Collider,Radius);
-      if(!Hit) continue;
-      if(!Best || Hit.Time < Best.Time) Best = Hit;
+      const BroadHit = SegmentExpandedBoundsHit(Start,Desired,Collider,Radius);
+      if(!BroadHit) continue;
+
+      if(Collider.Kind === "Model"){
+        this.Raycaster.near = 0;
+        this.Raycaster.far = Distance;
+        this.Raycaster.set(Start,Direction);
+        const Hits = this.Raycaster.intersectObject(Collider.CollisionObject,true);
+        let ModelTime = null;
+
+        for(const Hit of Hits){
+          if(!VisibleCollisionMesh(Hit.object)) continue;
+          ModelTime = THREE.MathUtils.clamp((Hit.distance-Radius)/Distance,0,1);
+          break;
+        }
+
+        if(!Number.isFinite(ModelTime)) continue;
+        const Hit = {Time:ModelTime,Normal:new THREE.Vector3()};
+        if(!Best || Hit.Time < Best.Time) Best = Hit;
+        continue;
+      }
+
+      if(!Best || BroadHit.Time < Best.Time) Best = BroadHit;
     }
 
     if(!Best) return Desired.clone();
-    const Delta = Desired.clone().sub(Start);
-    const Distance = Math.max(Delta.length(),0.001);
-    const SafeTime = Math.max(0,Best.Time-0.08/Distance);
+    const SafeTime = Math.max(0,Best.Time-0.045/Distance);
     return Start.clone().addScaledVector(Delta,SafeTime);
   }
 }
