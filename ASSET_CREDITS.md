@@ -1,46 +1,56 @@
 # Asset Credits
 
-## Character models
+## Version 0.1 character model
 
-The player and police use the rigged Quaternius `swat.glb` body from the **Ultimate Modular Men Pack**.
+The player and police now use the Quaternius Universal Base Characters model mirrored as `night-striker.glb`.
 
 - Creator: Quaternius
+- Source pack: Universal Base Characters
 - License: CC0 1.0
-- Runtime mirror: `euuuuuuan/fatal-funnel-public`
+- Runtime mirror: `Seyamalam/blood-league-kickoff`
+- Runtime path: `public/assets/vendor/quaternius/night-striker.glb`
 
-The robber instance is styled in dark neutral tactical colors with no police badge. Police instances retain a blue response-team treatment.
+The old SWAT character and its backpack-heavy silhouette are no longer used. Role differences are applied through material styling only.
 
-## Bank furniture and interior props
+## Bank office models
 
-The remaster now self-hosts actual GLB files from **Kenney Furniture Kit 2.0** instead of constructing the visible furniture from boxes.
+The old Kenney furniture set was removed from the runtime and replaced with a mixed office set.
 
-Included models:
+### CC0 models
 
-- `desk.glb`
-- `chairDesk.glb`
-- `bookcaseClosedDoors.glb`
-- `computerScreen.glb`
-- `computerKeyboard.glb`
-- `pottedPlant.glb`
-- `trashcan.glb`
-- `cardboardBoxClosed.glb`
-- `benchCushionLow.glb`
-- `doorwayOpen.glb`
+- `desk_alt.glb` — CreativeTrio — CC0 1.0
+- `chair_blue.glb` — Quaternius — CC0 1.0
+- `bookcase.glb` — Quaternius — CC0 1.0
+- `plant_monstera.glb` — Quaternius — CC0 1.0
+- `trash.glb` — Quaternius — CC0 1.0
+- `couch.glb` — Quaternius — CC0 1.0
+- `armchair.glb` — Quaternius — CC0 1.0
+- `floor_lamp.glb` — CreativeTrio — CC0 1.0
 
-Creator: Kenney  
-License: CC0 1.0  
-Original license text is preserved at `assets/models/kenney-furniture/LICENSE.txt`.
+Runtime mirror: `sorryhumans/roost`, under `web/public/models/office/`.
+
+### CC BY 3.0 models
+
+- `monitor.glb` — Zsky — CC BY 3.0
+- `laptop.glb` — J-Toastie — CC BY 3.0
+
+Runtime mirror: `sorryhumans/roost`, under `web/public/models/office/`.
+
+## Loot crate
+
+- Model: `dungeon_crate.glb`
+- Creator: Kay Lousberg / KayKit
+- Source pack: KayKit Dungeon Remastered
+- License: CC0 1.0
+- Runtime mirror: `sion-rgb/tactical-slash`
 
 ## Getaway vehicle
 
-The getaway vehicle is the actual `van.glb` model from **Kenney Car Kit**.
-
-Creator: Kenney  
-License: CC0 1.0  
-Original license text is preserved at `assets/models/kenney-car/LICENSE.txt`.
+- Model: `car_sedan.glb`
+- Creator: Quaternius
+- License: CC0 1.0
+- Runtime mirror: `halcyon-video/halcyon-video`
 
 ## Procedural runtime geometry
 
-Structural bank walls and the destructible vault face remain runtime geometry. The vault face is intentionally procedural because its individual sections must disappear and produce debris based on the exact breach location.
-
-The fictional breach device is also runtime game geometry. It is not a real-world weapon model and does not reproduce a real weapon mechanism.
+Structural bank walls, floors, lighting, and the destructible vault surface remain runtime geometry because they are part of the gameplay and collision layout.
