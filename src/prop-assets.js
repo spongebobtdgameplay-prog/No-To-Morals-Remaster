@@ -2,6 +2,8 @@ import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {MeshoptDecoder} from "three/addons/libs/meshopt_decoder.module.js";
 
+const JgBase = "https://raw.githubusercontent.com/Noisemaker111/jgengine/main/apps/dev/public/models/";
+
 const ModelPaths = Object.freeze({
   ReceptionDesk:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/desk_alt.glb",
   OfficeChair:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/chair_blue.glb",
@@ -14,26 +16,41 @@ const ModelPaths = Object.freeze({
   Armchair:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/armchair.glb",
   FloorLamp:"https://raw.githubusercontent.com/sorryhumans/roost/main/web/public/models/office/floor_lamp.glb",
   LootBox:"https://raw.githubusercontent.com/sion-rgb/tactical-slash/main/assets/environment/dungeon_crate.glb",
-  GetawayCar:"https://raw.githubusercontent.com/halcyon-video/halcyon-video/master/public/models/car_sedan.glb"
+  BankWall:JgBase+"quaternius-medieval-village/Wall_Plaster_Straight.glb",
+  BankDoorWall:JgBase+"quaternius-medieval-village/Wall_Plaster_Door_Flat.glb",
+  BankWindowWall:JgBase+"quaternius-medieval-village/Wall_Plaster_Window_Wide_Flat.glb",
+  BankFloor:JgBase+"quaternius-medieval-village/Floor_Brick.glb",
+  RoadStraight:JgBase+"kaykit-city-builder/road_straight.glb",
+  RoadCrossing:JgBase+"kaykit-city-builder/road_straight_crossing.glb",
+  CityBuildingA:JgBase+"kaykit-city-builder/building_A_withoutBase.glb",
+  CityBuildingB:JgBase+"kaykit-city-builder/building_B_withoutBase.glb",
+  CityBuildingC:JgBase+"kaykit-city-builder/building_C_withoutBase.glb",
+  Streetlight:JgBase+"kaykit-city-builder/streetlight.glb",
+  Dumpster:JgBase+"kaykit-city-builder/dumpster.glb",
+  Hydrant:JgBase+"kaykit-city-builder/firehydrant.glb"
 });
 
 function CloneMaterial(Material,Tint,TintStrength){
   const Clone = Material.clone();
+
   if(Tint !== null && Tint !== undefined && Clone.color){
     Clone.color.lerp(new THREE.Color(Tint),THREE.MathUtils.clamp(TintStrength,0,1));
   }
+
   if("roughness" in Clone && Number.isFinite(Clone.roughness)){
-    Clone.roughness = Math.max(0.36,Clone.roughness);
+    Clone.roughness = Math.max(0.34,Clone.roughness);
   }
+
   return Clone;
 }
 
 function PrepareModel(Model,Options){
   const Tint = Options.Tint;
-  const TintStrength = Number.isFinite(Options.TintStrength) ? Options.TintStrength : 0.12;
+  const TintStrength = Number.isFinite(Options.TintStrength) ? Options.TintStrength : 0.08;
 
   Model.traverse(Object=>{
     if(!Object.isMesh) return;
+
     Object.castShadow = Options.CastShadow !== false;
     Object.receiveShadow = Options.ReceiveShadow !== false;
 
@@ -47,14 +64,24 @@ function PrepareModel(Model,Options){
 
 function FitModel(Model,Options){
   Model.updateMatrixWorld(true);
+
   const Bounds = new THREE.Box3().setFromObject(Model);
   const Size = new THREE.Vector3();
   Bounds.getSize(Size);
 
   const Ratios = [];
-  if(Number.isFinite(Options.TargetWidth) && Size.x > 0.0001) Ratios.push(Options.TargetWidth/Size.x);
-  if(Number.isFinite(Options.TargetHeight) && Size.y > 0.0001) Ratios.push(Options.TargetHeight/Size.y);
-  if(Number.isFinite(Options.TargetDepth) && Size.z > 0.0001) Ratios.push(Options.TargetDepth/Size.z);
+
+  if(Number.isFinite(Options.TargetWidth) && Size.x > 0.0001){
+    Ratios.push(Options.TargetWidth/Size.x);
+  }
+
+  if(Number.isFinite(Options.TargetHeight) && Size.y > 0.0001){
+    Ratios.push(Options.TargetHeight/Size.y);
+  }
+
+  if(Number.isFinite(Options.TargetDepth) && Size.z > 0.0001){
+    Ratios.push(Options.TargetDepth/Size.z);
+  }
 
   const Scale = Ratios.length ? Math.min(...Ratios) : 1;
   Model.scale.multiplyScalar(Scale);
@@ -89,6 +116,7 @@ export class PropLibrary{
     }));
 
     this.Sources.clear();
+
     for(const [Key,Scene] of Loaded){
       this.Sources.set(Key,Scene);
     }
