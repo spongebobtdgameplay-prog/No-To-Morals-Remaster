@@ -17,12 +17,7 @@ export const GameConfig = Object.freeze({
   CameraShoulder: 0.5,
   PoliceResponseDelay: 10,
   LootCount: 5,
+  RequiredLoot: 3,
   LootValue: 50000,
-  VaultColumns: 10,
-  VaultRows: 9,
-  VaultCellWidth: 0.48,
-  VaultCellHeight: 0.48,
-  VaultThickness: 0.3,
-  BreachCooldown: 0.16,
-  BreachRadius: 0.7
+  BreachCooldown: 0.16
 });
