@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-repair3";
+import {GameConfig} from "./config.js?v=20260830-v011";
 
 export class VaultSystem{
   constructor(Scene,Collision){
@@ -170,7 +170,9 @@ export class LootSystem{
     Closest.userData.Collected = true;
     Closest.visible = false;
     this.Count += 1;
+    Player.UpdateLootBag(this.Count/GameConfig.RequiredLoot);
     Ui.SetLoot(this.Count,GameConfig.LootCount);
+    Ui.SetPickupFeedback("LOOT SECURED  +$"+GameConfig.LootValue.toLocaleString());
   }
 }
 
@@ -270,12 +272,20 @@ export class GameUi{
     this.EndText = document.getElementById("EndText");
     this.RestartButton = document.getElementById("RestartButton");
     this.ErrorPanel = document.getElementById("ErrorPanel");
+    this.PickupFeedback = document.getElementById("PickupFeedback");
+    this.PickupTimeout = null;
   }
 
   SetPrompt(Text){ this.InteractPrompt.textContent = Text || ""; }
   SetObjective(Text){ this.ObjectiveText.textContent = Text; }
   SetLoot(Current,Total){ this.LootText.textContent = Current+" / "+Total; }
   SetStamina(Value){ this.StaminaFill.style.width = THREE.MathUtils.clamp(Value,0,100)+"%"; }
+  SetPickupFeedback(Text){
+    this.PickupFeedback.textContent = Text;
+    this.PickupFeedback.classList.add("Visible");
+    clearTimeout(this.PickupTimeout);
+    this.PickupTimeout = setTimeout(()=>this.PickupFeedback.classList.remove("Visible"),900);
+  }
 
   SetReady(){
     this.ErrorPanel.classList.add("Hidden");
