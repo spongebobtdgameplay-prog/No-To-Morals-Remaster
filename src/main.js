@@ -1,14 +1,14 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-repair3";
-import {CollisionWorld} from "./collision.js?v=20260830-repair3";
-import {CharacterAssets} from "./assets.js?v=20260830-repair3";
-import {BankWorld} from "./world.js?v=20260830-repair3";
-import {PlayerController} from "./player.js?v=20260830-repair3";
-import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-repair3";
+import {GameConfig} from "./config.js?v=20260830-v011";
+import {CollisionWorld} from "./collision.js?v=20260830-v011";
+import {CharacterAssets} from "./assets.js?v=20260830-v011";
+import {BankWorld} from "./world.js?v=20260830-v011";
+import {PlayerController} from "./player.js?v=20260830-v011";
+import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-v011";
 
 const Canvas = document.getElementById("GameCanvas");
 const Renderer = new THREE.WebGLRenderer({canvas:Canvas,antialias:true,powerPreference:"high-performance"});
-Renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+Renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
 Renderer.setSize(innerWidth,innerHeight);
 Renderer.shadowMap.enabled = true;
 Renderer.shadowMap.type = THREE.PCFSoftShadowMap;
