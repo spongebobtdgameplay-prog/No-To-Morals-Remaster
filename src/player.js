@@ -1,16 +1,14 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v014";
-import {LimbContactSystem} from "./animation-contact.js?v=20260830-v012";
-import {InfinityMovementController} from "./infinity-movement.js?v=20260830-v014";
+import {GameConfig} from "./config.js?v=20260830-v015";
+import {InfinityMovementController} from "./infinity-movement.js?v=20260830-v015";
+import {InfinityCameraController} from "./infinity-camera.js?v=20260830-v015";
 
 function ExpAlpha(Delta,Rate){
   return 1-Math.exp(-Rate*Delta);
 }
 
 function NormalizeAngle(Value){
-  while(Value > Math.PI) Value -= Math.PI*2;
-  while(Value < -Math.PI) Value += Math.PI*2;
-  return Value;
+  return Math.atan2(Math.sin(Value),Math.cos(Value));
 }
 
 export class PlayerController{
@@ -19,22 +17,18 @@ export class PlayerController{
     this.Canvas = Canvas;
     this.Collision = Collision;
     this.Movement = new InfinityMovementController(Camera,Collision);
+    this.CameraRig = new InfinityCameraController(Camera,Canvas,Collision);
     this.Position = new THREE.Vector3(0,0,6);
     this.Keys = new Set();
-    this.TargetYaw = Math.PI;
-    this.Yaw = this.TargetYaw;
-    this.TargetPitch = -0.16;
-    this.Pitch = this.TargetPitch;
-    this.TargetCameraDistance = GameConfig.CameraDefault;
-    this.CameraDistance = this.TargetCameraDistance;
     this.VerticalVelocity = 0;
     this.Grounded = true;
     this.Stamina = 100;
     this.LastSprintTime = -99;
     this.CharacterRoot = new THREE.Group();
+    this.CharacterRoot.name = "PlayerCharacterPivot";
+    this.CharacterRoot.userData.IgnoreRayCollision = true;
     this.Character = null;
     this.Animator = null;
-    this.LimbContact = null;
     this.RightHand = null;
     this.BagAnchor = null;
     this.ModelFacingOffset = 0;
@@ -42,25 +36,22 @@ export class PlayerController{
     this.ToolKick = 0;
     this.ToolWorldPosition = new THREE.Vector3();
     this.ToolLocalPosition = new THREE.Vector3();
-    this.MoveForward = new THREE.Vector3();
-    this.MoveRight = new THREE.Vector3();
     this.MoveDirection = new THREE.Vector3();
-    this.UpVector = new THREE.Vector3(0,1,0);
     this.InteractQueued = false;
     this.FireQueued = false;
     this.Active = false;
     this.LastFacing = Math.PI;
     this.LastSpeed = 0;
-    this.CameraTarget = new THREE.Vector3(0,GameConfig.CameraHeight,6);
-    this.CameraPosition = new THREE.Vector3(0,2.2,8);
-    this.CameraBoomDistance = GameConfig.CameraDefault;
-    this.CameraLookTarget = new THREE.Vector3();
-    this.CameraInitialized = false;
     this.LootBag = null;
     this.LootBagBaseScale = new THREE.Vector3(1,1,1);
     this.LootBagBasePosition = new THREE.Vector3();
+    this.LootBagBaseQuaternion = new THREE.Quaternion();
     this.LootBagAnchorWorld = new THREE.Vector3();
+    this.LootBagAnchorQuaternion = new THREE.Quaternion();
+    this.CharacterRootQuaternion = new THREE.Quaternion();
     this.LootBagFullness = 0;
+
+    this.CameraRig.SyncLogicalPosition(this.Position);
 
     this.OnKeyDown = Event=>{
       if(["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight"].includes(Event.code)){
@@ -77,38 +68,14 @@ export class PlayerController{
 
     this.OnKeyUp = Event=>this.Keys.delete(Event.code);
 
-    this.OnMouseMove = Event=>{
-      if(!this.Active || document.pointerLockElement !== this.Canvas) return;
-      this.TargetYaw = NormalizeAngle(this.TargetYaw-Event.movementX*0.0021);
-      this.TargetPitch -= Event.movementY*0.0017;
-      this.TargetPitch = THREE.MathUtils.clamp(this.TargetPitch,-0.82,0.48);
-    };
-
     this.OnMouseDown = Event=>{
-      if(!this.Active) return;
-
-      if(document.pointerLockElement !== this.Canvas){
-        this.Canvas.requestPointerLock?.();
-        return;
-      }
-
-      if(Event.button === 0) this.FireQueued = true;
-    };
-
-    this.OnWheel = Event=>{
-      if(!this.Active) return;
-      this.TargetCameraDistance = THREE.MathUtils.clamp(
-        this.TargetCameraDistance+Math.sign(Event.deltaY)*0.35,
-        GameConfig.CameraMin,
-        GameConfig.CameraMax
-      );
+      if(!this.Active || Event.button !== 0) return;
+      this.FireQueued = true;
     };
 
     addEventListener("keydown",this.OnKeyDown);
     addEventListener("keyup",this.OnKeyUp);
-    addEventListener("mousemove",this.OnMouseMove);
     addEventListener("mousedown",this.OnMouseDown);
-    addEventListener("wheel",this.OnWheel,{passive:true});
     addEventListener("blur",()=>this.Keys.clear());
   }
 
@@ -118,7 +85,6 @@ export class PlayerController{
     this.RightHand = CharacterData.RightHand || null;
     this.BagAnchor = CharacterData.BagAnchor || null;
     this.ModelFacingOffset = CharacterData.FacingOffset || 0;
-    this.LimbContact = null;
     this.CharacterRoot.add(this.Character);
     Scene.add(this.CharacterRoot);
     this.CharacterRoot.position.copy(this.Position);
@@ -132,6 +98,7 @@ export class PlayerController{
     Bag.position.set(-0.28,0.82,-0.14);
     Bag.rotation.set(0.06,Math.PI/2,-0.2);
     this.LootBagBasePosition.copy(Bag.position);
+    this.LootBagBaseQuaternion.copy(Bag.quaternion);
     this.UpdateLootBag(0);
     this.UpdateLootBagTransform();
   }
@@ -149,17 +116,27 @@ export class PlayerController{
 
   UpdateLootBagTransform(){
     if(!this.LootBag) return;
+
     if(this.BagAnchor){
       this.CharacterRoot.updateMatrixWorld(true);
       this.BagAnchor.getWorldPosition(this.LootBagAnchorWorld);
       this.CharacterRoot.worldToLocal(this.LootBagAnchorWorld);
       this.LootBag.position.copy(this.LootBagAnchorWorld);
       this.LootBag.position.x -= 0.28;
-      this.LootBag.position.y -= 0.1-this.LootBagFullness*0.012;
+      this.LootBag.position.y -= 0.10-this.LootBagFullness*0.012;
       this.LootBag.position.z -= 0.14;
+
+      this.BagAnchor.getWorldQuaternion(this.LootBagAnchorQuaternion);
+      this.CharacterRoot.getWorldQuaternion(this.CharacterRootQuaternion);
+      this.CharacterRootQuaternion.invert();
+      this.LootBag.quaternion
+        .copy(this.CharacterRootQuaternion)
+        .multiply(this.LootBagAnchorQuaternion)
+        .multiply(this.LootBagBaseQuaternion);
     }else{
       this.LootBag.position.copy(this.LootBagBasePosition);
       this.LootBag.position.y += this.LootBagFullness*0.018;
+      this.LootBag.quaternion.copy(this.LootBagBaseQuaternion);
     }
   }
 
@@ -197,6 +174,7 @@ export class PlayerController{
 
   SetActive(Value){
     this.Active = Boolean(Value);
+    this.CameraRig.SetActive(this.Active);
     if(!this.Active) this.Keys.clear();
   }
 
@@ -221,18 +199,10 @@ export class PlayerController{
   Update(Delta){
     if(!this.Active) return;
 
-    const YawDifference = NormalizeAngle(this.TargetYaw-this.Yaw);
-    this.Yaw = NormalizeAngle(this.Yaw+YawDifference*ExpAlpha(Delta,GameConfig.CameraYawDamping));
-    this.Pitch = THREE.MathUtils.lerp(this.Pitch,this.TargetPitch,ExpAlpha(Delta,GameConfig.CameraPitchDamping));
-    this.CameraDistance = THREE.MathUtils.lerp(
-      this.CameraDistance,
-      this.TargetCameraDistance,
-      ExpAlpha(Delta,GameConfig.CameraZoomDamping)
-    );
+    this.CameraRig.Update(Delta);
 
     const Input = this.Movement.ReadInput(this.Keys);
     const Moving = Input.Moving;
-
     const WantsSprint = (this.Keys.has("ShiftLeft") || this.Keys.has("ShiftRight")) && Moving;
     let Sprinting = WantsSprint && this.Stamina > 0.5;
 
@@ -303,7 +273,6 @@ export class PlayerController{
     }
 
     let TurnRate = 0;
-
     const FacingDirection = Result.Resolved.lengthSq() > 0.000001
       ? Result.Resolved
       : this.MoveDirection;
@@ -317,62 +286,13 @@ export class PlayerController{
 
     this.CharacterRoot.position.copy(this.Position);
     this.CharacterRoot.rotation.y = this.LastFacing+this.ModelFacingOffset;
-    this.LimbContact?.Restore();
     this.Animator?.Update(Delta,this.LastSpeed,THREE.MathUtils.clamp(TurnRate,-4,4));
-    this.LimbContact?.Apply();
     this.UpdateLootBagTransform();
     this.UpdateToolVisual(Delta);
+    this.CameraRig.SyncLogicalPosition(this.Position);
+  }
 
-    const RawTarget = this.CameraLookTarget.set(
-      this.Position.x,
-      this.Position.y+GameConfig.CameraHeight,
-      this.Position.z
-    );
-
-    if(!this.CameraInitialized){
-      this.CameraTarget.copy(RawTarget);
-      this.CameraInitialized = true;
-    }else{
-      this.CameraTarget.lerp(RawTarget,ExpAlpha(Delta,GameConfig.CameraTargetDamping));
-    }
-
-    const ViewForward = new THREE.Vector3(
-      Math.sin(this.Yaw)*Math.cos(this.Pitch),
-      Math.sin(this.Pitch),
-      Math.cos(this.Yaw)*Math.cos(this.Pitch)
-    ).normalize();
-
-    const ViewRight = new THREE.Vector3(-Math.cos(this.Yaw),0,Math.sin(this.Yaw));
-
-    const DesiredCamera = this.CameraTarget.clone()
-      .addScaledVector(ViewForward,-this.CameraDistance)
-      .addScaledVector(ViewRight,GameConfig.CameraShoulder);
-
-    const SafeCamera = this.Collision.ClipSegment(this.CameraTarget,DesiredCamera,GameConfig.CameraCollisionPadding);
-    const DesiredBoom = SafeCamera.distanceTo(this.CameraTarget);
-    if(DesiredBoom < this.CameraBoomDistance){
-      this.CameraBoomDistance = DesiredBoom;
-    }else{
-      this.CameraBoomDistance = THREE.MathUtils.lerp(
-        this.CameraBoomDistance,
-        DesiredBoom,
-        ExpAlpha(Delta,GameConfig.CameraBoomDamping)
-      );
-    }
-    const CameraDirection = DesiredCamera.sub(this.CameraTarget).normalize();
-    const BoomCamera = this.CameraTarget.clone().addScaledVector(CameraDirection,this.CameraBoomDistance);
-    const PositionTarget = this.Collision.ClipSegment(
-      this.CameraTarget,
-      BoomCamera,
-      GameConfig.CameraCollisionPadding
-    );
-    this.CameraPosition.lerp(PositionTarget,ExpAlpha(Delta,GameConfig.CameraPositionDamping));
-    this.CameraPosition.copy(this.Collision.ClipSegment(
-      this.CameraTarget,
-      this.CameraPosition,
-      GameConfig.CameraCollisionPadding
-    ));
-    this.Camera.position.copy(this.CameraPosition);
-    this.Camera.lookAt(this.CameraTarget.clone().addScaledVector(ViewForward,2));
+  Render(Renderer,Scene){
+    this.CameraRig.Render(Renderer,Scene,this.Position);
   }
 }

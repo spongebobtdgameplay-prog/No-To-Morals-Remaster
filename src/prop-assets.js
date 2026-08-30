@@ -74,17 +74,24 @@ function FitModel(Model,Options){
   }
 }
 
-function GroundModel(Model){
+function GroundModel(Model,CenterXZ=true){
   Model.updateMatrixWorld(true);
 
   const Bounds = new THREE.Box3().setFromObject(Model);
   const Center = new THREE.Vector3();
   Bounds.getCenter(Center);
 
-  Model.position.x -= Center.x;
-  Model.position.z -= Center.z;
+  if(CenterXZ){
+    Model.position.x -= Center.x;
+    Model.position.z -= Center.z;
+  }
+
   Model.position.y -= Bounds.min.y;
   Model.updateMatrixWorld(true);
+}
+
+function PreserveAuthoredHorizontalPivot(Key){
+  return Key !== "LootBox";
 }
 
 export class PropLibrary{
@@ -136,7 +143,7 @@ export class PropLibrary{
       Model.scale.multiply(Options.ScaleVector);
     }
 
-    GroundModel(Model);
+    GroundModel(Model,!PreserveAuthoredHorizontalPivot(Key));
 
     const Root = new THREE.Group();
     Root.add(Model);

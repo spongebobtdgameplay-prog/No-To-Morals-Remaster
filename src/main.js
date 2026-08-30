@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v014";
-import {CollisionWorld} from "./collision.js?v=20260830-v014";
-import {CharacterAssets} from "./assets.js?v=20260830-v013";
-import {BankWorld} from "./world.js?v=20260830-v014";
-import {PlayerController} from "./player.js?v=20260830-v014";
-import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-v014";
+import {GameConfig} from "./config.js?v=20260830-v015";
+import {CollisionWorld} from "./collision.js?v=20260830-v015";
+import {CharacterAssets} from "./assets.js?v=20260830-v015";
+import {BankWorld} from "./world.js?v=20260830-v015";
+import {PlayerController} from "./player.js?v=20260830-v015";
+import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-v015";
 
 const Canvas = document.getElementById("GameCanvas");
 const Renderer = new THREE.WebGLRenderer({canvas:Canvas,antialias:true,powerPreference:"high-performance"});
@@ -78,7 +78,6 @@ function Finish(Win){
   Running = false;
   Player.SetActive(false);
 
-  if(document.pointerLockElement === Canvas) document.exitPointerLock?.();
   Ui.End(Win,Loot.Count);
 }
 
@@ -115,14 +114,10 @@ Ui.StartButton.addEventListener("click",()=>{
   Running = true;
   Ended = false;
   Player.SetActive(true);
-  Canvas.requestPointerLock?.();
 });
 
 Ui.RestartButton.addEventListener("click",()=>location.reload());
 
-Canvas.addEventListener("click",()=>{
-  if(Running && document.pointerLockElement !== Canvas) Canvas.requestPointerLock?.();
-});
 
 function Frame(Now){
   requestAnimationFrame(Frame);
@@ -165,7 +160,8 @@ function Frame(Now){
     UpdateObjective();
   }
 
-  Renderer.render(Scene,Camera);
+  if(Player.Character) Player.Render(Renderer,Scene);
+  else Renderer.render(Scene,Camera);
 }
 
 Boot();

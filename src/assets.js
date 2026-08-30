@@ -89,6 +89,14 @@ function StyleCharacter(Model,Role){
     Object.castShadow = true;
     Object.receiveShadow = true;
     Object.frustumCulled = false;
+
+    const Materials = Array.isArray(Object.material) ? Object.material : [Object.material];
+    for(const Material of Materials){
+      if(!Material) continue;
+      Material.side = THREE.FrontSide;
+      if("roughness" in Material) Material.roughness = Math.max(Material.roughness ?? 0.55,0.58);
+      Material.needsUpdate = true;
+    }
   });
 }
 
@@ -142,12 +150,18 @@ function NormalizeCharacter(Model){
   const Size = new THREE.Vector3();
   Bounds.getSize(Size);
 
-  const Scale = Size.y > 0.001 ? 1.78/Size.y : 1;
+  const Scale = Size.y > 0.001 ? 1.76/Size.y : 1;
   Model.scale.multiplyScalar(Scale);
   Model.updateMatrixWorld(true);
 
-  const NewBounds = new THREE.Box3().setFromObject(Model);
-  Model.position.y -= NewBounds.min.y;
+  const ScaledBounds = new THREE.Box3().setFromObject(Model);
+  const Center = ScaledBounds.getCenter(new THREE.Vector3());
+  Model.position.x -= Center.x;
+  Model.position.z -= Center.z;
+  Model.updateMatrixWorld(true);
+
+  const GroundedBounds = new THREE.Box3().setFromObject(Model);
+  Model.position.y -= GroundedBounds.min.y;
   Model.updateMatrixWorld(true);
 }
 
@@ -192,11 +206,11 @@ class ClipAnimator{
   }
 
   Update(Delta,Speed){
-    const Name = Speed > 5.0 ? "Run" : Speed > 0.12 ? "Walk" : "Idle";
+    const Name = Speed > 4.35 ? "Run" : Speed > 0.12 ? "Walk" : "Idle";
     this.Play(Name);
 
     if(this.Current){
-      const ReferenceSpeed = Name === "Run" ? 6.6 : Name === "Walk" ? 4.1 : 1;
+      const ReferenceSpeed = Name === "Run" ? 5.35 : Name === "Walk" ? 3.45 : 1;
       this.Current.setEffectiveTimeScale(Name === "Idle" ? 1 : THREE.MathUtils.clamp(Speed/ReferenceSpeed,0.76,1.18));
     }
 
@@ -234,10 +248,10 @@ class BoneAnimator{
   }
 
   Update(Delta,Speed,TurnRate=0){
-    this.Time += Delta*Math.max(2.7,Speed*1.26);
+    this.Time += Delta*Math.max(2.7,Speed*1.32);
 
-    const Move = THREE.MathUtils.clamp(Speed/6.6,0,1);
-    const Run = THREE.MathUtils.smoothstep(Speed,4.2,6.6);
+    const Move = THREE.MathUtils.clamp(Speed/5.35,0,1);
+    const Run = THREE.MathUtils.smoothstep(Speed,3.5,5.35);
     const Swing = Math.sin(this.Time)*Move;
 
     this.Rotate(this.Bones.LeftLeg,Swing*(0.45+Run*0.18));
@@ -259,7 +273,7 @@ export class CharacterAssets{
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260830-v013");
+    const Response = await fetch("assets/models/manifest.json?v=20260830-v015");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
 
     this.Manifest = await Response.json();
@@ -332,7 +346,7 @@ export class CharacterAssets{
         : new BoneAnimator(Model),
       RightHand,
       BagAnchor,
-      FacingOffset:Math.PI/2
+      FacingOffset:0
     };
   }
 
