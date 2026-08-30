@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js";
-import {LimbContactSystem} from "./animation-contact.js";
+import {GameConfig} from "./config.js?v=20260830-downtown2";
+import {LimbContactSystem} from "./animation-contact.js?v=20260830-downtown2";
 
 function ExpAlpha(Delta,Rate){
   return 1-Math.exp(-Rate*Delta);
