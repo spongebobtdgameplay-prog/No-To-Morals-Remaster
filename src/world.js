@@ -108,7 +108,7 @@ export class BankWorld{
     for(let X=-10;X<=10;X+=4){
       for(let Z=-8;Z<=8;Z+=4){
         this.AddProp("FloorTile",{
-          Position:new THREE.Vector3(X,0.001,Z),
+          Position:new THREE.Vector3(X,-0.1,Z),
           Collision:false,
           CastShadow:false
         });
@@ -149,7 +149,7 @@ export class BankWorld{
       const X = Side*11;
       const RotationY = Side > 0 ? -Math.PI/2 : Math.PI/2;
 
-      for(const Z of [-8,-4,0,4,8]){
+      for(const Z of [-9,-7,-5,-3,-1,1,3,5,7,9]){
         this.AddProp("BrickWindowTrim",{
           Position:new THREE.Vector3(X,0,Z),
           RotationY,
@@ -217,7 +217,7 @@ export class BankWorld{
   BuildStreet(){
     for(const X of [-18,-6,6,18]){
       this.AddProp("Street2Lane",{
-        Position:new THREE.Vector3(X,0,16.7),
+        Position:new THREE.Vector3(X,-0.15,16.7),
         RotationY:Math.PI/2,
         Collision:false,
         CastShadow:false
@@ -226,7 +226,7 @@ export class BankWorld{
 
     for(const X of [-10,-6,-2,2,6,10]){
       this.AddProp("FloorTile",{
-        Position:new THREE.Vector3(X,0.002,12),
+        Position:new THREE.Vector3(X,-0.1,12),
         Collision:false,
         CastShadow:false
       });
