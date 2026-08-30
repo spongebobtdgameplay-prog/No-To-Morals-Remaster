@@ -201,9 +201,11 @@ export class CollisionWorld{
       for(const Ratio of LateralRatios){
         const Lateral = Ratio*Radius;
         const Forward = Math.sqrt(Math.max(0,Radius*Radius-Lateral*Lateral));
+        const OriginForward = Math.max(0,Forward-0.045);
+        const BackOffset = Forward-OriginForward;
         this.RayOrigin.copy(Start)
           .addScaledVector(this.RaySide,Lateral)
-          .addScaledVector(this.RayDirection,Forward);
+          .addScaledVector(this.RayDirection,OriginForward);
         this.RayOrigin.y = Y;
 
         this.Raycaster.near = 0.0005;
@@ -213,7 +215,7 @@ export class CollisionWorld{
 
         for(const Hit of Hits){
           if(!VisibleCollisionMesh(Hit.object)) continue;
-          const AllowedDistance = THREE.MathUtils.clamp(Hit.distance-0.008,0,Distance);
+          const AllowedDistance = THREE.MathUtils.clamp(Hit.distance-BackOffset-0.008,0,Distance);
           const Time = AllowedDistance/Distance;
           if(!Best || Time < Best.Time){
             Best = {Time,Normal:HitNormal(Hit,this.RayDirection),Collider};
