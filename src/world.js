@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {PropLibrary} from "./prop-assets.js?v=20260830-repair3";
+import {PropLibrary} from "./prop-assets.js?v=20260831-v017";
 
 export class BankWorld{
   constructor(Scene,Collision){
@@ -64,12 +64,34 @@ export class BankWorld{
     Root.updateWorldMatrix(true,true);
     this.PropRoots.push(Root);
 
+    const BoundsSweep = Options.BoundsSweep ?? [
+      "BrickPlain",
+      "BrickWindow",
+      "BrickWindowTrim",
+      "FloorTile",
+      "Street2Lane",
+      "StreetIntersection",
+      "BuildingLarge",
+      "BuildingMedium",
+      "BuildingSmall"
+    ].includes(Key);
+
+    const FastSupport = Options.FastSupport ?? [
+      "FloorTile",
+      "Street2Lane",
+      "StreetIntersection",
+      "Manhole"
+    ].includes(Key);
+
     if(this.Collision && Options.Collision !== false){
       Root.userData.Collision = this.Collision.AddModel(
         Root,
         Options.CollisionType || "Prop:"+Key,
         {
           CameraBlock:Options.CameraBlock !== false,
+          FastSupport,
+          UseBoundsSweep:BoundsSweep,
+          UseBoundsCamera:BoundsSweep,
           Id:Options.ColliderId
         }
       );

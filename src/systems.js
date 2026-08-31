@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v014";
+import {GameConfig} from "./config.js?v=20260831-v017";
 
 export class VaultSystem{
   constructor(Scene,Collision){

@@ -1,11 +1,11 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v015";
-import {CollisionWorld} from "./collision.js?v=20260830-v015";
-import {CharacterAssets} from "./assets.js?v=20260831-v016";
-import {BankWorld} from "./world.js?v=20260831-v016";
-import {PlayerController} from "./player.js?v=20260831-v016";
-import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-v016";
-import {PerformanceManager} from "./performance.js?v=20260830-v016";
+import {GameConfig} from "./config.js?v=20260831-v017";
+import {CollisionWorld} from "./collision.js?v=20260831-v017";
+import {CharacterAssets} from "./assets.js?v=20260831-v017";
+import {BankWorld} from "./world.js?v=20260831-v017";
+import {PlayerController} from "./player.js?v=20260831-v017";
+import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260831-v017";
+import {PerformanceManager} from "./performance.js?v=20260831-v017";
 
 const Canvas = document.getElementById("GameCanvas");
 const FpsCounter = document.getElementById("FpsCounter");

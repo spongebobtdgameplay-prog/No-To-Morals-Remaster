@@ -177,6 +177,9 @@ export class CollisionWorld{
       Kind:"Model",
       Enabled:true,
       CameraBlock:Options.CameraBlock !== false,
+      FastSupport:Options.FastSupport === true,
+      UseBoundsSweep:Options.UseBoundsSweep === true,
+      UseBoundsCamera:Options.UseBoundsCamera === true,
       CollisionObject:Model,
       min:Bounds.min.clone(),
       max:Bounds.max.clone()
@@ -204,8 +207,8 @@ export class CollisionWorld{
     this.RaySide.set(this.RayDirection.z,0,-this.RayDirection.x).normalize();
     const Height = Number.isFinite(MinY) && Number.isFinite(MaxY) ? Math.max(0.2,MaxY-MinY) : 1.68;
     const BaseY = Number.isFinite(MinY) ? MinY : Start.y-0.84;
-    const HeightFractions = [0.055,0.11,0.18,0.27,0.38,0.50,0.63,0.77,0.90];
-    const LateralRatios = [-0.96,-0.64,-0.32,0,0.32,0.64,0.96];
+    const HeightFractions = [0.07,0.18,0.34,0.52,0.70,0.88,0.96];
+    const LateralRatios = [-0.94,-0.48,0,0.48,0.94];
     let Best = null;
 
     for(const HeightFraction of HeightFractions){
@@ -249,10 +252,18 @@ export class CollisionWorld{
       if(!VerticalOverlap(Collider,MinY,MaxY)) continue;
       if(!SweepTouchesBounds(Start,Delta,Radius,Collider)) continue;
 
-      const Hit = Collider.Kind === "Model"
-        ? this.FindModelSweep(Start,Delta,Radius,Collider,MinY,MaxY)
-        : SweepExpandedAabb(Start,Delta,Collider,Radius);
+      let Hit;
+
+      if(Collider.Kind === "Model"){
+        Hit = Collider.UseBoundsSweep
+          ? SweepExpandedAabb(Start,Delta,Collider,Radius)
+          : this.FindModelSweep(Start,Delta,Radius,Collider,MinY,MaxY);
+      }else{
+        Hit = SweepExpandedAabb(Start,Delta,Collider,Radius);
+      }
+
       if(!Hit) continue;
+      if(!Hit.Collider) Hit.Collider = Collider;
       if(!Best || Hit.Time < Best.Time) Best = Hit;
     }
 
@@ -407,7 +418,7 @@ export class CollisionWorld{
     for(const Collider of this.Colliders){
       if(!this.IsActive(Collider)) continue;
 
-      if(Collider.Kind === "Model"){
+      if(Collider.Kind === "Model" && !Collider.FastSupport){
         const ModelHeight = this.FindModelLandingHeight(Position,Radius,Collider,PreviousFeetY,NextFeetY);
         if(Number.isFinite(ModelHeight) && (!Found || ModelHeight > BestHeight)){
           BestHeight = ModelHeight;
@@ -445,7 +456,7 @@ export class CollisionWorld{
       const BroadHit = SegmentExpandedBoundsHit(Start,Desired,Collider,Radius);
       if(!BroadHit) continue;
 
-      if(Collider.Kind === "Model"){
+      if(Collider.Kind === "Model" && !Collider.UseBoundsCamera){
         this.Raycaster.near = 0;
         this.Raycaster.far = Distance;
         this.Raycaster.set(Start,Direction);

@@ -46,17 +46,15 @@ function CloneMaterial(Material,Role){
   if(Clone.color){
     if(Role === "Robber"){
       if(/skin/.test(Name)){
-        Clone.color.lerp(new THREE.Color(0xb98263),0.08);
+        Clone.color.setHex(0x1b1f23);
       }else if(/hair|eyebrow/.test(Name)){
-        Clone.color.setHex(0x17191c);
-      }else if(/purple/.test(Name)){
-        Clone.color.setHex(0x252c35);
-      }else if(/lightblue/.test(Name)){
-        Clone.color.setHex(0x37434f);
-      }else if(/white/.test(Name)){
-        Clone.color.setHex(0x30363d);
+        Clone.color.setHex(0x101214);
+      }else if(/purple|blue|lightblue/.test(Name)){
+        Clone.color.setHex(0x242c34);
+      }else if(/white|gray|grey/.test(Name)){
+        Clone.color.setHex(0x303840);
       }else{
-        Clone.color.lerp(new THREE.Color(0x3a424a),0.12);
+        Clone.color.lerp(new THREE.Color(0x252c33),0.28);
       }
     }else{
       Clone.color.lerp(new THREE.Color(0x29435c),0.24);
@@ -86,8 +84,8 @@ function StyleCharacter(Model,Role){
       Object.material = CloneMaterial(Object.material,Role);
     }
 
-    Object.castShadow = true;
-    Object.receiveShadow = true;
+    Object.castShadow = false;
+    Object.receiveShadow = false;
     Object.frustumCulled = false;
 
     const Materials = Array.isArray(Object.material) ? Object.material : [Object.material];
@@ -122,8 +120,8 @@ function StyleLootBag(Model){
       return Clone;
     });
     Object.material = WasArray ? Styled : Styled[0];
-    Object.castShadow = true;
-    Object.receiveShadow = true;
+    Object.castShadow = false;
+    Object.receiveShadow = false;
   });
 }
 
@@ -133,7 +131,7 @@ function RemoveUnwantedAccessories(Model){
   Model.traverse(Object=>{
     const Name = String(Object.name || "").toLowerCase();
 
-    if(/backpack|rucksack|quiver/.test(Name)){
+    if(/backpack|rucksack|quiver|shield|badge|radio/.test(Name)){
       Remove.push(Object);
     }
   });
@@ -273,7 +271,7 @@ export class CharacterAssets{
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260830-v015");
+    const Response = await fetch("assets/models/manifest.json?v=20260831-v017");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
 
     this.Manifest = await Response.json();
@@ -361,7 +359,7 @@ export class CharacterAssets{
     let Bounds = new THREE.Box3().setFromObject(Model);
     let Size = Bounds.getSize(new THREE.Vector3());
 
-    if(Size.x > Size.z){
+    if(Size.x >= Size.z){
       Model.rotateY(Math.PI/2);
       Model.updateMatrixWorld(true);
       Bounds = new THREE.Box3().setFromObject(Model);
@@ -370,16 +368,35 @@ export class CharacterAssets{
 
     const LongestHorizontal = Math.max(Size.x,Size.z);
     if(LongestHorizontal > 0.001){
-      Model.scale.multiplyScalar(0.72/LongestHorizontal);
+      Model.scale.multiplyScalar(0.58/LongestHorizontal);
     }
 
     Model.updateMatrixWorld(true);
     Bounds = new THREE.Box3().setFromObject(Model);
 
-    const Center = Bounds.getCenter(new THREE.Vector3());
-    Model.position.x -= Center.x;
-    Model.position.z -= Center.z;
-    Model.position.y -= Bounds.max.y;
+    const HandleBounds = new THREE.Box3();
+    HandleBounds.makeEmpty();
+
+    Model.traverse(Object=>{
+      if(!Object.isMesh) return;
+      const MaterialNames = (Array.isArray(Object.material) ? Object.material : [Object.material])
+        .map(Material=>String(Material?.name || ""))
+        .join(" ");
+      const SearchName = String(Object.name || "")+" "+MaterialNames;
+      if(/handle|strap/i.test(SearchName)) HandleBounds.expandByObject(Object);
+    });
+
+    const GripPoint = new THREE.Vector3();
+
+    if(!HandleBounds.isEmpty()){
+      HandleBounds.getCenter(GripPoint);
+      GripPoint.y = HandleBounds.max.y;
+    }else{
+      Bounds.getCenter(GripPoint);
+      GripPoint.y = Bounds.max.y;
+    }
+
+    Model.position.sub(GripPoint);
     Model.updateMatrixWorld(true);
 
     const FinalBounds = new THREE.Box3().setFromObject(Model);
@@ -388,6 +405,7 @@ export class CharacterAssets{
 
     Grip.name = "RobberLootDuffelGrip";
     Grip.userData.BagHalfWidth = FinalSize.x*0.5;
+    Grip.userData.BagDepth = FinalSize.z;
     Grip.userData.BagHeight = FinalSize.y;
     Grip.add(Model);
 

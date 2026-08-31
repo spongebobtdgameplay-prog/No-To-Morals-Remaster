@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260830-v015";
-import {InfinityMovementController} from "./infinity-movement.js?v=20260830-v015";
-import {InfinityCameraController} from "./infinity-camera.js?v=20260830-v015";
+import {GameConfig} from "./config.js?v=20260831-v017";
+import {InfinityMovementController} from "./infinity-movement.js?v=20260831-v017";
+import {InfinityCameraController} from "./infinity-camera.js?v=20260831-v017";
 
 function ExpAlpha(Delta,Rate){
   return 1-Math.exp(-Rate*Delta);
@@ -49,6 +49,7 @@ export class PlayerController{
     this.LootBagAnchorWorld = new THREE.Vector3();
     this.LootBagFullness = 0;
     this.LootBagSide = 1;
+    this.GroundProbeTimer = 0;
 
     this.CameraRig.SyncLogicalPosition(this.Position);
 
@@ -94,8 +95,8 @@ export class PlayerController{
     this.LootBag = Bag;
     this.LootBagBaseScale.copy(Bag.scale);
     this.CharacterRoot.add(Bag);
-    Bag.position.set(0.42,0.78,0.03);
-    Bag.rotation.set(0.04,0.10,-0.04);
+    Bag.position.set(0.34,0.78,0.02);
+    Bag.rotation.set(0,0,0);
     this.LootBagBasePosition.copy(Bag.position);
     this.LootBagBaseQuaternion.copy(Bag.quaternion);
     this.UpdateLootBag(0);
@@ -124,27 +125,23 @@ export class PlayerController{
       const HandSide = Math.sign(this.LootBagAnchorWorld.x) || this.LootBagSide || 1;
       this.LootBagSide = HandSide;
 
-      const HalfWidth = Math.max(
-        0.08,
-        Number(this.LootBag.userData.BagHalfWidth) || 0.12
-      );
-      const OutwardClearance = Math.min(0.095,0.04+HalfWidth*0.22);
       const MoveAmount = THREE.MathUtils.clamp(
         this.LastSpeed/GameConfig.SprintSpeed,
         0,
         1
       );
       const Sway = Math.sin(performance.now()*0.0075)*MoveAmount;
+      const OutwardClearance = 0.032+this.LootBagFullness*0.008;
 
       this.LootBag.position.copy(this.LootBagAnchorWorld);
       this.LootBag.position.x += HandSide*OutwardClearance;
-      this.LootBag.position.y -= 0.015-this.LootBagFullness*0.008;
-      this.LootBag.position.z += 0.025;
+      this.LootBag.position.y -= 0.018;
+      this.LootBag.position.z += 0.012;
 
       this.LootBag.quaternion.copy(this.LootBagBaseQuaternion);
-      this.LootBag.rotation.x += 0.025*MoveAmount;
-      this.LootBag.rotation.y += HandSide*0.035;
-      this.LootBag.rotation.z += HandSide*(-0.045-Sway*0.055);
+      this.LootBag.rotation.x += 0.018*MoveAmount;
+      this.LootBag.rotation.y += HandSide*(0.035+Sway*0.022);
+      this.LootBag.rotation.z += HandSide*(0.02+Sway*0.045);
     }else{
       this.LootBag.position.copy(this.LootBagBasePosition);
       this.LootBag.position.y += this.LootBagFullness*0.018;
@@ -247,41 +244,69 @@ export class PlayerController{
     const ResolvedSpeed = Delta > 0.0001 ? Result.Resolved.length()/Delta : 0;
     this.LastSpeed = Moving ? Math.min(Speed,ResolvedSpeed) : 0;
 
+    const HorizontalMoved = Result.Resolved.lengthSq() > 0.0000005;
+
     if(Result.Stepped && Number.isFinite(Result.StepHeight) && this.VerticalVelocity <= 0.2){
       this.Position.y = Math.max(this.Position.y,Result.StepHeight);
       this.VerticalVelocity = 0;
       this.Grounded = true;
+      this.GroundProbeTimer = 0;
     }
 
-    const PreviousFeetY = this.Position.y;
-    this.VerticalVelocity -= GameConfig.Gravity*Delta;
-    const NextFeetY = PreviousFeetY+this.VerticalVelocity*Delta;
+    if(this.Grounded && this.VerticalVelocity <= 0.001){
+      this.VerticalVelocity = 0;
+      this.GroundProbeTimer += Delta;
+      const ProbeInterval = HorizontalMoved ? 0.055 : 0.14;
 
-    if(this.VerticalVelocity <= 0){
-      const LandingHeight = this.Collision.FindLandingHeight(
-        this.Position,
-        GameConfig.PlayerRadius*0.72,
-        PreviousFeetY,
-        NextFeetY
-      );
+      if(this.GroundProbeTimer >= ProbeInterval){
+        this.GroundProbeTimer = 0;
+        const LandingHeight = this.Collision.FindLandingHeight(
+          this.Position,
+          GameConfig.PlayerRadius*0.72,
+          this.Position.y+0.055,
+          this.Position.y-0.13
+        );
 
-      if(Number.isFinite(LandingHeight)){
-        this.Position.y = LandingHeight;
-        this.VerticalVelocity = 0;
-        this.Grounded = true;
+        if(Number.isFinite(LandingHeight)){
+          this.Position.y = LandingHeight;
+          this.Grounded = true;
+        }else{
+          this.Grounded = false;
+        }
+      }
+    }else{
+      const PreviousFeetY = this.Position.y;
+      this.VerticalVelocity -= GameConfig.Gravity*Delta;
+      const NextFeetY = PreviousFeetY+this.VerticalVelocity*Delta;
+
+      if(this.VerticalVelocity <= 0){
+        const LandingHeight = this.Collision.FindLandingHeight(
+          this.Position,
+          GameConfig.PlayerRadius*0.72,
+          PreviousFeetY,
+          NextFeetY
+        );
+
+        if(Number.isFinite(LandingHeight)){
+          this.Position.y = LandingHeight;
+          this.VerticalVelocity = 0;
+          this.Grounded = true;
+          this.GroundProbeTimer = 0;
+        }else{
+          this.Position.y = NextFeetY;
+          this.Grounded = false;
+        }
       }else{
         this.Position.y = NextFeetY;
         this.Grounded = false;
       }
-    }else{
-      this.Position.y = NextFeetY;
-      this.Grounded = false;
     }
 
     if(this.Position.y < 0){
       this.Position.y = 0;
       this.VerticalVelocity = 0;
       this.Grounded = true;
+      this.GroundProbeTimer = 0;
     }
 
     let TurnRate = 0;

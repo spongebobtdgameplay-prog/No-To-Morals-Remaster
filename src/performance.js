@@ -100,7 +100,7 @@ export class PerformanceManager{
     Lights.sort((A,B)=>A.Distance-B.Distance);
 
     for(let Index=0;Index<Lights.length;Index+=1){
-      Lights[Index].Object.visible = Index < 6;
+      Lights[Index].Object.visible = Index < 3;
     }
   }
 

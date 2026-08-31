@@ -6,11 +6,11 @@ The player and response characters now come from one visually matched character 
 
 - Creator: Quaternius
 - License: CC0 1.0
-- Player model: `hoodie.glb`
+- Player model: `swat.glb`
 - Response model: `casual.glb`
 - Runtime mirror: `nixocode/vietnam-65-lanes-of-war`
 
-The player uses the adult-proportioned hoodie character from the same CC0 modular-men pack, with accessory nodes removed at runtime. The runtime applies dark modern clothing and concealed-face material treatment, and uses its imported idle, walk, and run animation clips.
+The player uses the full-body SWAT character from the same CC0 modular-men pack as a dark masked robber base, with nonessential accessory nodes removed at runtime and the palette converted to charcoal clothing. It keeps the pack's compatible idle, walk, and run animation clips.
 
 ## Loot duffel
 
@@ -21,7 +21,7 @@ The player uses the adult-proportioned hoodie character from the same CC0 modula
 - Local file: `assets/models/duffel-bag.glb`
 - Mesh inspection: 1,376 triangles, separate body, handle, handle straps, and zipper meshes
 
-The imported bag is attached to the robber's chest/torso bone and uses restrained per-axis fullness changes as loot is collected.
+The imported bag is aligned from its real handle/strap mesh bounds and the handle grip tracks the robber's right hand while the bag hangs below it. Fullness scaling keeps the grip point stable as loot is collected.
 
 ## Downtown City environment
 
