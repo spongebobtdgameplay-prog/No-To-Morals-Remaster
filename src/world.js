@@ -34,12 +34,7 @@ export class BankWorld{
 
     const Moon = new THREE.DirectionalLight(0xd7e4ff,1.75);
     Moon.position.set(-12,20,15);
-    Moon.castShadow = true;
-    Moon.shadow.mapSize.set(2048,2048);
-    Moon.shadow.camera.left = -36;
-    Moon.shadow.camera.right = 36;
-    Moon.shadow.camera.top = 36;
-    Moon.shadow.camera.bottom = -36;
+    Moon.castShadow = false;
     this.Scene.add(Moon);
 
     for(const X of [-8,-4,0,4,8]){

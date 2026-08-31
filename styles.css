@@ -38,6 +38,10 @@ body{font-family:var(--mono);color:var(--text)}
 .Crosshair:before,.Crosshair:after{content:"";position:absolute;background:rgba(255,255,255,.82)}
 .Crosshair:before{left:7px;top:1px;width:2px;height:14px}
 .Crosshair:after{left:1px;top:7px;width:14px;height:2px}
+.FpsCounter{position:fixed;right:16px;top:78px;min-width:132px;border:1px solid rgba(255,255,255,.14);background:rgba(7,10,12,.82);padding:8px 10px;display:grid;grid-template-columns:auto auto;gap:2px 10px;align-items:baseline;box-shadow:0 10px 24px rgba(0,0,0,.18)}
+.FpsCounter span{font-size:9px;letter-spacing:.16em;color:var(--muted)}
+.FpsCounter strong{font-size:18px;line-height:1;color:var(--green);justify-self:end}
+.FpsCounter small{grid-column:1/-1;color:#7f8a92;font-size:9px;letter-spacing:.06em;text-align:right}
 .InteractPrompt{position:fixed;left:50%;bottom:22%;transform:translateX(-50%);min-width:260px;text-align:center;color:#fff;font-size:12px;letter-spacing:.08em;text-shadow:0 2px 8px #000}
 .PickupFeedback{position:fixed;left:50%;top:58%;transform:translate(-50%,-8px);padding:9px 13px;border:1px solid rgba(116,224,171,.56);background:rgba(5,15,12,.9);color:var(--green);font-size:11px;font-weight:800;letter-spacing:.12em;opacity:0;transition:opacity .12s ease,transform .12s ease}
 .PickupFeedback.Visible{opacity:1;transform:translate(-50%,0)}
@@ -58,6 +62,7 @@ button:disabled{opacity:.38;cursor:default}
   .Objective{min-width:0;flex:1}
   .Controls{display:none}
   .Brand{display:none}
+  .FpsCounter{right:10px;top:66px}
   .Meter{width:150px}
   .StartCard{min-height:calc(100vh - 24px);width:calc(100vw - 24px);padding:34px 24px}
   .StartCard h1{font-size:clamp(58px,18vw,96px)}

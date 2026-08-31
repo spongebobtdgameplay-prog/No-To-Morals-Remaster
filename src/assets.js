@@ -353,10 +353,44 @@ export class CharacterAssets{
   CreateLootBag(){
     const Source = this.Models.get("lootBag");
     if(!Source?.Scene) throw new Error("Required duffel bag model is unavailable.");
+
     const Model = Source.Scene.clone(true);
     StyleLootBag(Model);
-    Model.scale.setScalar(0.17);
-    Model.name = "RobberLootDuffel";
-    return Model;
+    Model.updateMatrixWorld(true);
+
+    let Bounds = new THREE.Box3().setFromObject(Model);
+    let Size = Bounds.getSize(new THREE.Vector3());
+
+    if(Size.x > Size.z){
+      Model.rotateY(Math.PI/2);
+      Model.updateMatrixWorld(true);
+      Bounds = new THREE.Box3().setFromObject(Model);
+      Size = Bounds.getSize(new THREE.Vector3());
+    }
+
+    const LongestHorizontal = Math.max(Size.x,Size.z);
+    if(LongestHorizontal > 0.001){
+      Model.scale.multiplyScalar(0.72/LongestHorizontal);
+    }
+
+    Model.updateMatrixWorld(true);
+    Bounds = new THREE.Box3().setFromObject(Model);
+
+    const Center = Bounds.getCenter(new THREE.Vector3());
+    Model.position.x -= Center.x;
+    Model.position.z -= Center.z;
+    Model.position.y -= Bounds.max.y;
+    Model.updateMatrixWorld(true);
+
+    const FinalBounds = new THREE.Box3().setFromObject(Model);
+    const FinalSize = FinalBounds.getSize(new THREE.Vector3());
+    const Grip = new THREE.Group();
+
+    Grip.name = "RobberLootDuffelGrip";
+    Grip.userData.BagHalfWidth = FinalSize.x*0.5;
+    Grip.userData.BagHeight = FinalSize.y;
+    Grip.add(Model);
+
+    return Grip;
   }
 }

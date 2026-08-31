@@ -47,9 +47,8 @@ export class PlayerController{
     this.LootBagBasePosition = new THREE.Vector3();
     this.LootBagBaseQuaternion = new THREE.Quaternion();
     this.LootBagAnchorWorld = new THREE.Vector3();
-    this.LootBagAnchorQuaternion = new THREE.Quaternion();
-    this.CharacterRootQuaternion = new THREE.Quaternion();
     this.LootBagFullness = 0;
+    this.LootBagSide = 1;
 
     this.CameraRig.SyncLogicalPosition(this.Position);
 
@@ -95,8 +94,8 @@ export class PlayerController{
     this.LootBag = Bag;
     this.LootBagBaseScale.copy(Bag.scale);
     this.CharacterRoot.add(Bag);
-    Bag.position.set(-0.28,0.82,-0.14);
-    Bag.rotation.set(0.06,Math.PI/2,-0.2);
+    Bag.position.set(0.42,0.78,0.03);
+    Bag.rotation.set(0.04,0.10,-0.04);
     this.LootBagBasePosition.copy(Bag.position);
     this.LootBagBaseQuaternion.copy(Bag.quaternion);
     this.UpdateLootBag(0);
@@ -117,22 +116,35 @@ export class PlayerController{
   UpdateLootBagTransform(){
     if(!this.LootBag) return;
 
-    if(this.BagAnchor){
+    if(this.RightHand){
       this.CharacterRoot.updateMatrixWorld(true);
-      this.BagAnchor.getWorldPosition(this.LootBagAnchorWorld);
+      this.RightHand.getWorldPosition(this.LootBagAnchorWorld);
       this.CharacterRoot.worldToLocal(this.LootBagAnchorWorld);
-      this.LootBag.position.copy(this.LootBagAnchorWorld);
-      this.LootBag.position.x -= 0.28;
-      this.LootBag.position.y -= 0.10-this.LootBagFullness*0.012;
-      this.LootBag.position.z -= 0.14;
 
-      this.BagAnchor.getWorldQuaternion(this.LootBagAnchorQuaternion);
-      this.CharacterRoot.getWorldQuaternion(this.CharacterRootQuaternion);
-      this.CharacterRootQuaternion.invert();
-      this.LootBag.quaternion
-        .copy(this.CharacterRootQuaternion)
-        .multiply(this.LootBagAnchorQuaternion)
-        .multiply(this.LootBagBaseQuaternion);
+      const HandSide = Math.sign(this.LootBagAnchorWorld.x) || this.LootBagSide || 1;
+      this.LootBagSide = HandSide;
+
+      const HalfWidth = Math.max(
+        0.08,
+        Number(this.LootBag.userData.BagHalfWidth) || 0.12
+      );
+      const OutwardClearance = Math.min(0.095,0.04+HalfWidth*0.22);
+      const MoveAmount = THREE.MathUtils.clamp(
+        this.LastSpeed/GameConfig.SprintSpeed,
+        0,
+        1
+      );
+      const Sway = Math.sin(performance.now()*0.0075)*MoveAmount;
+
+      this.LootBag.position.copy(this.LootBagAnchorWorld);
+      this.LootBag.position.x += HandSide*OutwardClearance;
+      this.LootBag.position.y -= 0.015-this.LootBagFullness*0.008;
+      this.LootBag.position.z += 0.025;
+
+      this.LootBag.quaternion.copy(this.LootBagBaseQuaternion);
+      this.LootBag.rotation.x += 0.025*MoveAmount;
+      this.LootBag.rotation.y += HandSide*0.035;
+      this.LootBag.rotation.z += HandSide*(-0.045-Sway*0.055);
     }else{
       this.LootBag.position.copy(this.LootBagBasePosition);
       this.LootBag.position.y += this.LootBagFullness*0.018;

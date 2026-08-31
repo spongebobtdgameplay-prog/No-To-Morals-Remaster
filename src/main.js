@@ -4,14 +4,15 @@ import {CollisionWorld} from "./collision.js?v=20260830-v015";
 import {CharacterAssets} from "./assets.js?v=20260830-v015";
 import {BankWorld} from "./world.js?v=20260830-v015";
 import {PlayerController} from "./player.js?v=20260830-v015";
-import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-v015";
+import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260830-v016";
+import {PerformanceManager} from "./performance.js?v=20260830-v016";
 
 const Canvas = document.getElementById("GameCanvas");
-const Renderer = new THREE.WebGLRenderer({canvas:Canvas,antialias:true,powerPreference:"high-performance"});
-Renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
-Renderer.setSize(innerWidth,innerHeight);
-Renderer.shadowMap.enabled = true;
-Renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const FpsCounter = document.getElementById("FpsCounter");
+const Renderer = new THREE.WebGLRenderer({canvas:Canvas,antialias:false,powerPreference:"high-performance"});
+Renderer.setPixelRatio(1);
+Renderer.setSize(innerWidth,innerHeight,false);
+Renderer.shadowMap.enabled = false;
 Renderer.outputColorSpace = THREE.SRGBColorSpace;
 Renderer.toneMapping = THREE.ACESFilmicToneMapping;
 Renderer.toneMappingExposure = 1.28;
@@ -29,6 +30,7 @@ const Vault = new VaultSystem(Scene,Collision);
 const Gear = new GearSystem(World);
 const Loot = new LootSystem(World);
 const Police = new PoliceSystem(Scene,Collision,Assets,World,Vault);
+const Performance = new PerformanceManager(Renderer,Scene,Camera,FpsCounter);
 
 let Running = false;
 let Ended = false;
@@ -36,7 +38,7 @@ let AlarmTime = 0;
 let LastTime = performance.now();
 
 function Resize(){
-  Renderer.setSize(innerWidth,innerHeight);
+  Performance.Resize();
   Camera.aspect = innerWidth/innerHeight;
   Camera.updateProjectionMatrix();
 }
@@ -101,6 +103,8 @@ async function Boot(){
     const Robber = Assets.Create("Robber");
     Player.AttachCharacter(Robber,Scene);
     Player.AttachLootBag(Assets.CreateLootBag());
+    Performance.FreezeStaticRoots(World.PropRoots);
+    Performance.RefreshSceneBudget();
     Ui.SetReady();
   }catch(Error){
     console.error("Boot failed.",Error);
@@ -121,6 +125,7 @@ Ui.RestartButton.addEventListener("click",()=>location.reload());
 
 function Frame(Now){
   requestAnimationFrame(Frame);
+  Performance.Frame(Now);
 
   const Delta = Math.min((Now-LastTime)/1000,0.05);
   LastTime = Now;
