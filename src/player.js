@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260831-v019";
-import {InfinityMovementController} from "./infinity-movement.js?v=20260831-v019";
-import {InfinityCameraController} from "./infinity-camera.js?v=20260831-v019";
+import {GameConfig} from "./config.js?v=20260831-v020";
+import {InfinityMovementController} from "./infinity-movement.js?v=20260831-v020";
+import {InfinityCameraController} from "./infinity-camera.js?v=20260831-v020";
 
 function ExpAlpha(Delta,Rate){
   return 1-Math.exp(-Rate*Delta);
@@ -128,9 +128,9 @@ export class PlayerController{
       this.LootBagSide = HandSide;
 
       this.LootBag.position.copy(this.LootBagAnchorWorld);
-      this.LootBag.position.x += HandSide*0.018;
-      this.LootBag.position.y -= 0.008;
-      this.LootBag.position.z += 0.012;
+      this.LootBag.position.x += HandSide*0.008;
+      this.LootBag.position.y -= 0.006;
+      this.LootBag.position.z += 0.004;
       this.LootBag.quaternion.copy(this.LootBagBaseQuaternion);
       this.LootBagHeldByHand = true;
       return;

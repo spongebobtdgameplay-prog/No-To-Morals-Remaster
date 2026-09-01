@@ -47,6 +47,86 @@ export class PerformanceManager{
     this.ApplyRendererSize(true);
   }
 
+  BatchStaticRoots(Roots){
+    const SafeRootNames = new Set([
+      "Prop-BrickPlain",
+      "Prop-BrickWindow",
+      "Prop-BrickWindowTrim",
+      "Prop-FloorTile",
+      "Prop-Street2Lane",
+      "Prop-StreetIntersection",
+      "Prop-BuildingLarge",
+      "Prop-BuildingMedium",
+      "Prop-BuildingSmall"
+    ]);
+    const Groups = new Map();
+
+    for(const Root of Roots || []){
+      if(!Root?.isObject3D || !SafeRootNames.has(Root.name)) continue;
+      Root.updateMatrixWorld(true);
+
+      Root.traverse(Object=>{
+        if(!Object.isMesh || Object.isSkinnedMesh || !Object.geometry || !Object.material) return;
+        if(Array.isArray(Object.material)) return;
+
+        const Key = Object.geometry.uuid+"|"+Object.material.uuid;
+        let Group = Groups.get(Key);
+
+        if(!Group){
+          Group = {
+            Geometry:Object.geometry,
+            Material:Object.material,
+            Meshes:[]
+          };
+          Groups.set(Key,Group);
+        }
+
+        Group.Meshes.push(Object);
+      });
+    }
+
+    let BatchedMeshes = 0;
+    let BatchDraws = 0;
+
+    for(const Group of Groups.values()){
+      if(Group.Meshes.length < 2) continue;
+
+      const Batch = new THREE.InstancedMesh(
+        Group.Geometry,
+        Group.Material,
+        Group.Meshes.length
+      );
+
+      Batch.name = "StaticWorldBatch";
+      Batch.castShadow = false;
+      Batch.receiveShadow = false;
+      Batch.frustumCulled = true;
+      Batch.matrixAutoUpdate = false;
+
+      for(let Index=0;Index<Group.Meshes.length;Index+=1){
+        const Mesh = Group.Meshes[Index];
+        Mesh.updateWorldMatrix(true,false);
+        Batch.setMatrixAt(Index,Mesh.matrixWorld);
+        Mesh.visible = false;
+        BatchedMeshes += 1;
+      }
+
+      Batch.instanceMatrix.needsUpdate = true;
+      Batch.updateMatrix();
+      Batch.updateMatrixWorld(true);
+      this.Scene.add(Batch);
+      BatchDraws += 1;
+    }
+
+    this.StaticBatchCount = BatchDraws;
+    this.StaticBatchedMeshes = BatchedMeshes;
+
+    return {
+      Batches:BatchDraws,
+      Meshes:BatchedMeshes
+    };
+  }
+
   RefreshSceneBudget(){
     const MaxAnisotropy = Math.min(2,this.Renderer.capabilities.getMaxAnisotropy());
 
@@ -143,7 +223,8 @@ export class PerformanceManager{
       this.Counter.innerHTML =
         "<span>FPS</span><strong>"+Math.round(Fps)+"</strong>"+
         "<small>"+Average.toFixed(1)+" ms · "+this.PixelRatio.toFixed(2)+"× · "+
-        Calls+" calls · "+Math.round(Triangles/1000)+"k tris</small>";
+        Calls+" calls · "+Math.round(Triangles/1000)+"k tris · "+
+        (this.StaticBatchCount || 0)+" batches</small>";
     }
   }
 }

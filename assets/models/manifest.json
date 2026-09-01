@@ -1,21 +1,21 @@
 {
-  "robberUpper": {
-    "url": "https://raw.githubusercontent.com/agentkaerf/FreeModels/main/Ultimate%20Modular%20Men-%20Feb%202022/Individual%20Characters/glTF/Casual_Hoodie.gltf",
-    "author": "Quaternius",
-    "sourcePack": "Ultimate Modular Men Pack",
-    "license": "CC0-1.0",
-    "mirror": "agentkaerf/FreeModels",
-    "model": "Casual_Hoodie.gltf",
-    "role": "upper body"
+  "robberBody": {
+    "url": "https://raw.githubusercontent.com/discover3d/Danpav1__3DTestGame/main/Assets/models/Unarmed/player.glb",
+    "author": "J-Toastie",
+    "sourcePack": "Animated Character Base",
+    "source": "https://poly.pizza/m/AZzoJo1FBm",
+    "license": "CC-BY-3.0",
+    "mirror": "discover3d/Danpav1__3DTestGame",
+    "model": "player.glb"
   },
-  "robberLower": {
-    "url": "https://raw.githubusercontent.com/agentkaerf/FreeModels/main/Ultimate%20Modular%20Men-%20Feb%202022/Individual%20Characters/glTF/Casual_2.gltf",
-    "author": "Quaternius",
-    "sourcePack": "Ultimate Modular Men Pack",
-    "license": "CC0-1.0",
-    "mirror": "agentkaerf/FreeModels",
-    "model": "Casual_2.gltf",
-    "role": "long-pants lower body"
+  "robberHood": {
+    "url": "assets/models/robber-hood.glb",
+    "author": "KameoNi",
+    "source": "https://sketchfab.com/3d-models/generic-low-poly-hood-f22bbda95e1f4ddd98b395cb5c4993bb",
+    "license": "CC-BY",
+    "mirror": "NonoIceOff/Spy-Clans",
+    "model": "generic_low-poly_hood.glb",
+    "triangles": 83
   },
   "police": {
     "url": "https://raw.githubusercontent.com/nixocode/vietnam-65-lanes-of-war/main/art/models/casual.glb",

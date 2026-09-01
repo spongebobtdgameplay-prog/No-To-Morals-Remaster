@@ -1,18 +1,32 @@
 # Asset Credits
 
-## Character pack
+## Player character
 
-The player now uses the modular design of **Quaternius Ultimate Modular Men Pack** instead of a fantasy or tactical full-character replacement.
+The player no longer uses the Quaternius or KayKit character families.
 
-- Creator: Quaternius
-- License: CC0 1.0
-- Robber upper body: `Casual_Hoodie.gltf`
-- Robber lower body: `Casual_2.gltf`
-- Runtime mirror: `agentkaerf/FreeModels`
+### Animated body
 
-The upper hoodie model supplies the head, torso, arms, and hands. The casual model supplies the long-pants lower body and shoes. Both are from the same modular pack and are animated together, which keeps adult modern proportions without the previous shorts, SWAT armor, or fantasy outfit.
+- Model: `Animated Character Base`
+- Creator: J-Toastie
+- License: CC-BY 3.0
+- Source: https://poly.pizza/m/AZzoJo1FBm
+- Runtime mirror: `discover3d/Danpav1__3DTestGame`
+- Runtime file: `Assets/models/Unarmed/player.glb`
 
-Response characters still use the Quaternius Ultimate Modular Men Pack `casual.glb` character from `nixocode/vietnam-65-lanes-of-war`.
+The body is loaded as one rigged animated character. There is no Quaternius/KayKit player fallback.
+
+### Hood
+
+- Model: `Generic Low-Poly Hood`
+- Creator: KameoNi
+- License: Creative Commons Attribution
+- Source: https://sketchfab.com/3d-models/generic-low-poly-hood-f22bbda95e1f4ddd98b395cb5c4993bb
+- Mirror used for the local copy: `NonoIceOff/Spy-Clans`
+- Local file: `assets/models/robber-hood.glb`
+
+The hood is a separate lightweight mesh attached to the new body's head bone.
+
+Response characters still use the existing Quaternius response model; that model is not used for the player.
 
 ## Loot duffel
 
@@ -23,7 +37,7 @@ Response characters still use the Quaternius Ultimate Modular Men Pack `casual.g
 - Local file: `assets/models/duffel-bag.glb`
 - Mesh inspection: 1,376 triangles, separate body, handle, handle straps, and zipper meshes
 
-The imported bag uses only the dedicated `Bag Handle` mesh to define its grip origin. The grip stays under the player root and is positioned from the right-hand bone every frame, so the bag can hang vertically without inheriting a bad wrist-bone rotation.
+The imported bag uses only the dedicated `Bag Handle` mesh to define its grip origin. Its original model orientation is preserved, and the verified handle origin is positioned from the player's right-hand bone every frame.
 
 ## Downtown City environment
 

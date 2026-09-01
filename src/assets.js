@@ -46,17 +46,13 @@ function CloneMaterial(Material,Role){
   if(Clone.color){
     if(Role === "Robber"){
       if(/eye/.test(Name)){
-        Clone.color.setHex(0xd9dde0);
-      }else if(/skin/.test(Name)){
-        Clone.color.setHex(0x171a1e);
+        Clone.color.setHex(0xd8dde2);
+      }else if(/skin|face/.test(Name)){
+        Clone.color.lerp(new THREE.Color(0x2f3439),0.68);
       }else if(/hair|eyebrow/.test(Name)){
-        Clone.color.setHex(0x111417);
-      }else if(/purple|blue|lightblue/.test(Name)){
-        Clone.color.setHex(0x303943);
-      }else if(/white|gray|grey/.test(Name)){
-        Clone.color.setHex(0x39424a);
+        Clone.color.setHex(0x14181c);
       }else{
-        Clone.color.lerp(new THREE.Color(0x303840),0.22);
+        Clone.color.lerp(new THREE.Color(0x2b3239),0.48);
       }
     }else{
       Clone.color.lerp(new THREE.Color(0x29435c),0.24);
@@ -165,45 +161,73 @@ function NormalizeCharacter(Model){
   Model.updateMatrixWorld(true);
 }
 
-function TrimCompositePart(Model,KeepUpper){
-  Model.updateMatrixWorld(true);
-  const Remove = [];
-  const Center = new THREE.Vector3();
-
+function StyleRobberHood(Model){
   Model.traverse(Object=>{
-    if(!Object.isMesh) return;
+    if(!Object.isMesh || !Object.material) return;
 
-    const Bounds = new THREE.Box3().setFromObject(Object);
-    if(Bounds.isEmpty()) return;
+    const WasArray = Array.isArray(Object.material);
+    const Materials = WasArray ? Object.material : [Object.material];
+    const Styled = Materials.map(Material=>{
+      const Clone = Material.clone();
 
-    Bounds.getCenter(Center);
-    const Name = String(Object.name || "").toLowerCase();
-    const IsUpperAccessory = /head|hair|eye|brow|hand|arm|hood|shirt|sleeve|torso|chest/.test(Name);
+      if(Clone.map){
+        Clone.map.colorSpace = THREE.SRGBColorSpace;
+        Clone.map.needsUpdate = true;
+      }
 
-    if(KeepUpper){
-      if(Center.y < 0.9 && !IsUpperAccessory) Remove.push(Object);
-    }else if(Center.y > 1.02){
-      Remove.push(Object);
-    }
+      if(Clone.color) Clone.color.setHex(0x353c43);
+      if("roughness" in Clone) Clone.roughness = 0.9;
+      if("metalness" in Clone) Clone.metalness = 0;
+      Clone.side = THREE.FrontSide;
+      Clone.needsUpdate = true;
+      return Clone;
+    });
+
+    Object.material = WasArray ? Styled : Styled[0];
+    Object.castShadow = false;
+    Object.receiveShadow = false;
   });
+}
 
-  for(const Object of Remove){
-    Object.parent?.remove(Object);
+function PrepareRobberHood(Model){
+  Model.updateMatrixWorld(true);
+
+  let Bounds = new THREE.Box3().setFromObject(Model);
+  const Size = Bounds.getSize(new THREE.Vector3());
+
+  if(Size.x > 0.0001){
+    Model.scale.multiplyScalar(0.35/Size.x);
   }
 
+  Model.updateMatrixWorld(true);
+  Bounds = new THREE.Box3().setFromObject(Model);
+
+  const Center = Bounds.getCenter(new THREE.Vector3());
+  Model.position.sub(Center);
   Model.updateMatrixWorld(true);
 }
 
-class CompositeAnimator{
-  constructor(Animators){
-    this.Animators = Animators.filter(Boolean);
-  }
+function AttachRobberHood(Model,Hood,Head){
+  if(!Head) return false;
 
-  Update(Delta,Speed,TurnRate=0){
-    for(const Animator of this.Animators){
-      Animator.Update(Delta,Speed,TurnRate);
-    }
-  }
+  StyleRobberHood(Hood);
+  PrepareRobberHood(Hood);
+
+  Model.updateMatrixWorld(true);
+  const BodyBounds = new THREE.Box3().setFromObject(Model);
+  const Target = new THREE.Vector3();
+  Head.getWorldPosition(Target);
+  Target.y = BodyBounds.max.y-0.15;
+
+  Model.worldToLocal(Target);
+  Model.add(Hood);
+  Hood.position.copy(Target);
+  Hood.rotation.set(0,0,0);
+  Hood.updateMatrixWorld(true);
+
+  Head.updateWorldMatrix(true,false);
+  Head.attach(Hood);
+  return true;
 }
 
 class ClipAnimator{
@@ -314,14 +338,14 @@ export class CharacterAssets{
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260831-v019");
+    const Response = await fetch("assets/models/manifest.json?v=20260831-v020");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
 
     this.Manifest = await Response.json();
 
     await Promise.all([
-      this.LoadOne("robberUpper"),
-      this.LoadOne("robberLower"),
+      this.LoadOne("robberBody"),
+      this.LoadOne("robberHood"),
       this.LoadOne("police"),
       this.LoadOne("lootBag")
     ]);
@@ -369,58 +393,71 @@ export class CharacterAssets{
         Animator:HasGenericMovement
           ? new ClipAnimator(Model,Source.Animations)
           : new BoneAnimator(Model),
-        RightHand:FindBone(Model,[/righthand/,/rightwrist/,/wristr/,/handr/]),
+        RightHand:FindBone(Model,[
+          /mixamorig.*righthand/,
+          /righthand/,
+          /rightwrist/,
+          /wristr/,
+          /handr/,
+          /hand.*r/
+        ]),
         BagAnchor:null,
         FacingOffset:0
       };
     }
 
-    const UpperSource = this.Models.get("robberUpper");
-    const LowerSource = this.Models.get("robberLower");
+    const BodySource = this.Models.get("robberBody");
+    const HoodSource = this.Models.get("robberHood");
 
-    if(!UpperSource?.Scene || !LowerSource?.Scene){
-      throw new Error("Required modular robber models are unavailable.");
+    if(!BodySource?.Scene || !HoodSource?.Scene){
+      throw new Error("Required new-source robber assets are unavailable.");
     }
 
-    const Upper = SkeletonClone(UpperSource.Scene);
-    const Lower = SkeletonClone(LowerSource.Scene);
+    const Model = SkeletonClone(BodySource.Scene);
+    RemoveUnwantedAccessories(Model);
+    StyleCharacter(Model,"Robber");
+    NormalizeCharacter(Model);
 
-    RemoveUnwantedAccessories(Upper);
-    RemoveUnwantedAccessories(Lower);
-    StyleCharacter(Upper,"Robber");
-    StyleCharacter(Lower,"Robber");
-    NormalizeCharacter(Upper);
-    NormalizeCharacter(Lower);
-    TrimCompositePart(Upper,true);
-    TrimCompositePart(Lower,false);
+    const RightHand = FindBone(Model,[
+      /mixamorig.*righthand/,
+      /righthand/,
+      /rightwrist/,
+      /wristr/,
+      /handr/,
+      /hand.*r/
+    ]);
 
-    const Model = new THREE.Group();
-    Model.name = "ModernRobberComposite";
-    Model.add(Upper);
-    Model.add(Lower);
+    const Head = FindBone(Model,[
+      /mixamorig.*head/,
+      /head$/,
+      /head/,
+      /neck.*2/,
+      /neck/
+    ]);
 
-    const UpperHasMovement = Boolean(
-      FindClip(UpperSource.Animations,["Idle_Neutral","Idle","Stand"]) &&
-      FindClip(UpperSource.Animations,["Walk","Walking"]) &&
-      FindClip(UpperSource.Animations,["Run","Run_Shoot","Running"])
+    const Hood = HoodSource.Scene.clone(true);
+    const HoodAttached = AttachRobberHood(Model,Hood,Head);
+
+    if(!RightHand){
+      throw new Error("New robber rig loaded without a detectable right-hand bone.");
+    }
+
+    if(!HoodAttached){
+      throw new Error("New robber rig loaded without a detectable head bone for the hood.");
+    }
+
+    const HasGenericMovement = Boolean(
+      FindClip(BodySource.Animations,["Idle_Neutral","Idle","Stand"]) &&
+      FindClip(BodySource.Animations,["Walk","Walking"]) &&
+      FindClip(BodySource.Animations,["Run","Run_Shoot","Running"])
     );
-    const LowerHasMovement = Boolean(
-      FindClip(LowerSource.Animations,["Idle_Neutral","Idle","Stand"]) &&
-      FindClip(LowerSource.Animations,["Walk","Walking"]) &&
-      FindClip(LowerSource.Animations,["Run","Run_Shoot","Running"])
-    );
-
-    const UpperAnimator = UpperHasMovement
-      ? new ClipAnimator(Upper,UpperSource.Animations)
-      : new BoneAnimator(Upper);
-    const LowerAnimator = LowerHasMovement
-      ? new ClipAnimator(Lower,LowerSource.Animations)
-      : new BoneAnimator(Lower);
 
     return {
       Model,
-      Animator:new CompositeAnimator([UpperAnimator,LowerAnimator]),
-      RightHand:FindBone(Upper,[/righthand/,/rightwrist/,/wristr/,/handr/]),
+      Animator:HasGenericMovement
+        ? new ClipAnimator(Model,BodySource.Animations)
+        : new BoneAnimator(Model),
+      RightHand,
       BagAnchor:null,
       FacingOffset:0
     };
@@ -432,7 +469,7 @@ export class CharacterAssets{
 
     const Model = Source.Scene.clone(true);
     StyleLootBag(Model);
-    Model.rotation.y = Math.PI/2;
+    Model.rotation.set(0,0,0);
     Model.updateMatrixWorld(true);
 
     let Bounds = new THREE.Box3().setFromObject(Model);
@@ -440,7 +477,7 @@ export class CharacterAssets{
     const LongestHorizontal = Math.max(Size.x,Size.z);
 
     if(LongestHorizontal > 0.001){
-      Model.scale.multiplyScalar(0.52/LongestHorizontal);
+      Model.scale.multiplyScalar(0.50/LongestHorizontal);
     }
 
     Model.updateMatrixWorld(true);
