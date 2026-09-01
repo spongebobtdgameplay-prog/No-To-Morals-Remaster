@@ -1,12 +1,12 @@
 {
   "robber": {
-    "url": "https://raw.githubusercontent.com/nixocode/vietnam-65-lanes-of-war/main/art/models/swat.glb",
-    "author": "Quaternius",
-    "sourcePack": "Ultimate Modular Men Pack",
+    "url": "https://raw.githubusercontent.com/Malcolmnixon/godot-xr-dungeon-template/main/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb",
+    "author": "Kay Lousberg",
+    "sourcePack": "KayKit Adventurers Character Pack",
     "license": "CC0-1.0",
-    "mirror": "nixocode/vietnam-65-lanes-of-war",
-    "model": "swat.glb",
-    "variant": "dark masked full-body"
+    "mirror": "Malcolmnixon/godot-xr-dungeon-template",
+    "model": "Rogue_Hooded.glb",
+    "variant": "hooded rogue"
   },
   "police": {
     "url": "https://raw.githubusercontent.com/nixocode/vietnam-65-lanes-of-war/main/art/models/casual.glb",

@@ -6,8 +6,8 @@ export class PerformanceManager{
     this.Scene = Scene;
     this.Camera = Camera;
     this.Counter = Counter;
-    this.MaxPixelRatio = Math.min(devicePixelRatio || 1,0.96);
-    this.MinPixelRatio = Math.min(this.MaxPixelRatio,0.72);
+    this.MaxPixelRatio = Math.min(devicePixelRatio || 1,1);
+    this.MinPixelRatio = this.MaxPixelRatio;
     this.PixelRatio = this.MaxPixelRatio;
     this.Samples = [];
     this.LastFrame = performance.now();
@@ -48,7 +48,7 @@ export class PerformanceManager{
   }
 
   RefreshSceneBudget(){
-    const MaxAnisotropy = Math.min(2,this.Renderer.capabilities.getMaxAnisotropy());
+    const MaxAnisotropy = Math.min(4,this.Renderer.capabilities.getMaxAnisotropy());
 
     this.Scene.traverse(Object=>{
       if(Object.isLight) Object.castShadow = false;
@@ -104,32 +104,9 @@ export class PerformanceManager{
     }
   }
 
-  UpdateQuality(Fps){
-    if(Fps < 48){
-      this.HighFpsChecks = 0;
-      const Next = Math.max(this.MinPixelRatio,this.PixelRatio-0.07);
-
-      if(Math.abs(Next-this.PixelRatio) > 0.001){
-        this.PixelRatio = Next;
-        this.ApplyRendererSize(true);
-      }
-
-      return;
-    }
-
-    if(Fps >= 58 && this.PixelRatio < this.MaxPixelRatio-0.01){
-      this.HighFpsChecks += 1;
-
-      if(this.HighFpsChecks >= 3){
-        this.HighFpsChecks = 0;
-        this.PixelRatio = Math.min(this.MaxPixelRatio,this.PixelRatio+0.04);
-        this.ApplyRendererSize(true);
-      }
-
-      return;
-    }
-
+  UpdateQuality(){
     this.HighFpsChecks = 0;
+    this.PixelRatio = this.MaxPixelRatio;
   }
 
   Frame(Now){

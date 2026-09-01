@@ -131,7 +131,7 @@ function RemoveUnwantedAccessories(Model){
   Model.traverse(Object=>{
     const Name = String(Object.name || "").toLowerCase();
 
-    if(/backpack|rucksack|quiver|shield|badge|radio/.test(Name)){
+    if(/backpack|rucksack|quiver|shield|badge|radio|sword|dagger|knife|bow|axe|weapon/.test(Name)){
       Remove.push(Object);
     }
   });
@@ -271,7 +271,7 @@ export class CharacterAssets{
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260831-v017");
+    const Response = await fetch("assets/models/manifest.json?v=20260831-v018");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
 
     this.Manifest = await Response.json();
@@ -354,21 +354,15 @@ export class CharacterAssets{
 
     const Model = Source.Scene.clone(true);
     StyleLootBag(Model);
+    Model.rotation.y = Math.PI/2;
     Model.updateMatrixWorld(true);
 
     let Bounds = new THREE.Box3().setFromObject(Model);
-    let Size = Bounds.getSize(new THREE.Vector3());
-
-    if(Size.x >= Size.z){
-      Model.rotateY(Math.PI/2);
-      Model.updateMatrixWorld(true);
-      Bounds = new THREE.Box3().setFromObject(Model);
-      Size = Bounds.getSize(new THREE.Vector3());
-    }
-
+    const Size = Bounds.getSize(new THREE.Vector3());
     const LongestHorizontal = Math.max(Size.x,Size.z);
+
     if(LongestHorizontal > 0.001){
-      Model.scale.multiplyScalar(0.58/LongestHorizontal);
+      Model.scale.multiplyScalar(0.52/LongestHorizontal);
     }
 
     Model.updateMatrixWorld(true);
@@ -379,11 +373,8 @@ export class CharacterAssets{
 
     Model.traverse(Object=>{
       if(!Object.isMesh) return;
-      const MaterialNames = (Array.isArray(Object.material) ? Object.material : [Object.material])
-        .map(Material=>String(Material?.name || ""))
-        .join(" ");
-      const SearchName = String(Object.name || "")+" "+MaterialNames;
-      if(/handle|strap/i.test(SearchName)) HandleBounds.expandByObject(Object);
+      const Name = String(Object.name || "").trim();
+      if(/^Bag Handle$/i.test(Name)) HandleBounds.expandByObject(Object);
     });
 
     const GripPoint = new THREE.Vector3();
@@ -407,6 +398,7 @@ export class CharacterAssets{
     Grip.userData.BagHalfWidth = FinalSize.x*0.5;
     Grip.userData.BagDepth = FinalSize.z;
     Grip.userData.BagHeight = FinalSize.y;
+    Grip.userData.HandleGripVerified = !HandleBounds.isEmpty();
     Grip.add(Model);
 
     return Grip;

@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260831-v017";
-import {InfinityMovementController} from "./infinity-movement.js?v=20260831-v017";
-import {InfinityCameraController} from "./infinity-camera.js?v=20260831-v017";
+import {GameConfig} from "./config.js?v=20260831-v018";
+import {InfinityMovementController} from "./infinity-movement.js?v=20260831-v018";
+import {InfinityCameraController} from "./infinity-camera.js?v=20260831-v018";
 
 function ExpAlpha(Delta,Rate){
   return 1-Math.exp(-Rate*Delta);
@@ -49,6 +49,7 @@ export class PlayerController{
     this.LootBagAnchorWorld = new THREE.Vector3();
     this.LootBagFullness = 0;
     this.LootBagSide = 1;
+    this.LootBagHeldByHand = false;
     this.GroundProbeTimer = 0;
 
     this.CameraRig.SyncLogicalPosition(this.Position);
@@ -95,8 +96,28 @@ export class PlayerController{
     this.LootBag = Bag;
     this.LootBagBaseScale.copy(Bag.scale);
     this.CharacterRoot.add(Bag);
-    Bag.position.set(0.34,0.78,0.02);
-    Bag.rotation.set(0,0,0);
+    this.CharacterRoot.updateMatrixWorld(true);
+
+    if(this.RightHand){
+      this.RightHand.getWorldPosition(this.LootBagAnchorWorld);
+      this.CharacterRoot.worldToLocal(this.LootBagAnchorWorld);
+
+      const HandSide = Math.sign(this.LootBagAnchorWorld.x) || 1;
+      this.LootBagAnchorWorld.x += HandSide*0.035;
+
+      Bag.position.copy(this.LootBagAnchorWorld);
+      Bag.quaternion.identity();
+      Bag.updateMatrixWorld(true);
+
+      this.RightHand.updateWorldMatrix(true,false);
+      this.RightHand.attach(Bag);
+      this.LootBagHeldByHand = true;
+    }else{
+      Bag.position.set(0.34,0.78,0.02);
+      Bag.quaternion.identity();
+      this.LootBagHeldByHand = false;
+    }
+
     this.LootBagBasePosition.copy(Bag.position);
     this.LootBagBaseQuaternion.copy(Bag.quaternion);
     this.UpdateLootBag(0);
@@ -117,35 +138,11 @@ export class PlayerController{
   UpdateLootBagTransform(){
     if(!this.LootBag) return;
 
-    if(this.RightHand){
-      this.CharacterRoot.updateMatrixWorld(true);
-      this.RightHand.getWorldPosition(this.LootBagAnchorWorld);
-      this.CharacterRoot.worldToLocal(this.LootBagAnchorWorld);
+    this.LootBag.position.copy(this.LootBagBasePosition);
+    this.LootBag.quaternion.copy(this.LootBagBaseQuaternion);
 
-      const HandSide = Math.sign(this.LootBagAnchorWorld.x) || this.LootBagSide || 1;
-      this.LootBagSide = HandSide;
-
-      const MoveAmount = THREE.MathUtils.clamp(
-        this.LastSpeed/GameConfig.SprintSpeed,
-        0,
-        1
-      );
-      const Sway = Math.sin(performance.now()*0.0075)*MoveAmount;
-      const OutwardClearance = 0.032+this.LootBagFullness*0.008;
-
-      this.LootBag.position.copy(this.LootBagAnchorWorld);
-      this.LootBag.position.x += HandSide*OutwardClearance;
-      this.LootBag.position.y -= 0.018;
-      this.LootBag.position.z += 0.012;
-
-      this.LootBag.quaternion.copy(this.LootBagBaseQuaternion);
-      this.LootBag.rotation.x += 0.018*MoveAmount;
-      this.LootBag.rotation.y += HandSide*(0.035+Sway*0.022);
-      this.LootBag.rotation.z += HandSide*(0.02+Sway*0.045);
-    }else{
-      this.LootBag.position.copy(this.LootBagBasePosition);
+    if(!this.LootBagHeldByHand){
       this.LootBag.position.y += this.LootBagFullness*0.018;
-      this.LootBag.quaternion.copy(this.LootBagBaseQuaternion);
     }
   }
 

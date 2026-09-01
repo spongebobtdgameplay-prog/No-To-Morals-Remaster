@@ -1,16 +1,22 @@
 # Asset Credits
 
-## Character pack
+## Character packs
 
-The player and response characters now come from one visually matched character pack: **Quaternius Ultimate Modular Men Pack**.
+The player uses **KayKit Adventurers Character Pack**.
+
+- Creator: Kay Lousberg
+- License: CC0 1.0
+- Player model: `Rogue_Hooded.glb`
+- Runtime mirror: `Malcolmnixon/godot-xr-dungeon-template`
+
+The hooded rogue is used as the robber base instead of the previous SWAT character.
+
+Response characters still use **Quaternius Ultimate Modular Men Pack**.
 
 - Creator: Quaternius
 - License: CC0 1.0
-- Player model: `swat.glb`
 - Response model: `casual.glb`
 - Runtime mirror: `nixocode/vietnam-65-lanes-of-war`
-
-The player uses the full-body SWAT character from the same CC0 modular-men pack as a dark masked robber base, with nonessential accessory nodes removed at runtime and the palette converted to charcoal clothing. It keeps the pack's compatible idle, walk, and run animation clips.
 
 ## Loot duffel
 
@@ -21,7 +27,7 @@ The player uses the full-body SWAT character from the same CC0 modular-men pack 
 - Local file: `assets/models/duffel-bag.glb`
 - Mesh inspection: 1,376 triangles, separate body, handle, handle straps, and zipper meshes
 
-The imported bag is aligned from its real handle/strap mesh bounds and the handle grip tracks the robber's right hand while the bag hangs below it. Fullness scaling keeps the grip point stable as loot is collected.
+The imported bag now uses the dedicated `Bag Handle` mesh only for its grip point. The grip group is reparented directly to the robber's right-hand bone so the hand and handle share the same transform.
 
 ## Downtown City environment
 
