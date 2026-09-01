@@ -1,12 +1,21 @@
 {
-  "robber": {
-    "url": "https://raw.githubusercontent.com/Malcolmnixon/godot-xr-dungeon-template/main/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb",
-    "author": "Kay Lousberg",
-    "sourcePack": "KayKit Adventurers Character Pack",
+  "robberUpper": {
+    "url": "https://raw.githubusercontent.com/agentkaerf/FreeModels/main/Ultimate%20Modular%20Men-%20Feb%202022/Individual%20Characters/glTF/Casual_Hoodie.gltf",
+    "author": "Quaternius",
+    "sourcePack": "Ultimate Modular Men Pack",
     "license": "CC0-1.0",
-    "mirror": "Malcolmnixon/godot-xr-dungeon-template",
-    "model": "Rogue_Hooded.glb",
-    "variant": "hooded rogue"
+    "mirror": "agentkaerf/FreeModels",
+    "model": "Casual_Hoodie.gltf",
+    "role": "upper body"
+  },
+  "robberLower": {
+    "url": "https://raw.githubusercontent.com/agentkaerf/FreeModels/main/Ultimate%20Modular%20Men-%20Feb%202022/Individual%20Characters/glTF/Casual_2.gltf",
+    "author": "Quaternius",
+    "sourcePack": "Ultimate Modular Men Pack",
+    "license": "CC0-1.0",
+    "mirror": "agentkaerf/FreeModels",
+    "model": "Casual_2.gltf",
+    "role": "long-pants lower body"
   },
   "police": {
     "url": "https://raw.githubusercontent.com/nixocode/vietnam-65-lanes-of-war/main/art/models/casual.glb",

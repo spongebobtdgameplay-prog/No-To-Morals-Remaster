@@ -45,16 +45,18 @@ function CloneMaterial(Material,Role){
 
   if(Clone.color){
     if(Role === "Robber"){
-      if(/skin/.test(Name)){
-        Clone.color.setHex(0x1b1f23);
+      if(/eye/.test(Name)){
+        Clone.color.setHex(0xd9dde0);
+      }else if(/skin/.test(Name)){
+        Clone.color.setHex(0x171a1e);
       }else if(/hair|eyebrow/.test(Name)){
-        Clone.color.setHex(0x101214);
+        Clone.color.setHex(0x111417);
       }else if(/purple|blue|lightblue/.test(Name)){
-        Clone.color.setHex(0x242c34);
+        Clone.color.setHex(0x303943);
       }else if(/white|gray|grey/.test(Name)){
-        Clone.color.setHex(0x303840);
+        Clone.color.setHex(0x39424a);
       }else{
-        Clone.color.lerp(new THREE.Color(0x252c33),0.28);
+        Clone.color.lerp(new THREE.Color(0x303840),0.22);
       }
     }else{
       Clone.color.lerp(new THREE.Color(0x29435c),0.24);
@@ -161,6 +163,47 @@ function NormalizeCharacter(Model){
   const GroundedBounds = new THREE.Box3().setFromObject(Model);
   Model.position.y -= GroundedBounds.min.y;
   Model.updateMatrixWorld(true);
+}
+
+function TrimCompositePart(Model,KeepUpper){
+  Model.updateMatrixWorld(true);
+  const Remove = [];
+  const Center = new THREE.Vector3();
+
+  Model.traverse(Object=>{
+    if(!Object.isMesh) return;
+
+    const Bounds = new THREE.Box3().setFromObject(Object);
+    if(Bounds.isEmpty()) return;
+
+    Bounds.getCenter(Center);
+    const Name = String(Object.name || "").toLowerCase();
+    const IsUpperAccessory = /head|hair|eye|brow|hand|arm|hood|shirt|sleeve|torso|chest/.test(Name);
+
+    if(KeepUpper){
+      if(Center.y < 0.9 && !IsUpperAccessory) Remove.push(Object);
+    }else if(Center.y > 1.02){
+      Remove.push(Object);
+    }
+  });
+
+  for(const Object of Remove){
+    Object.parent?.remove(Object);
+  }
+
+  Model.updateMatrixWorld(true);
+}
+
+class CompositeAnimator{
+  constructor(Animators){
+    this.Animators = Animators.filter(Boolean);
+  }
+
+  Update(Delta,Speed,TurnRate=0){
+    for(const Animator of this.Animators){
+      Animator.Update(Delta,Speed,TurnRate);
+    }
+  }
 }
 
 class ClipAnimator{
@@ -271,13 +314,14 @@ export class CharacterAssets{
   }
 
   async Load(){
-    const Response = await fetch("assets/models/manifest.json?v=20260831-v018");
+    const Response = await fetch("assets/models/manifest.json?v=20260831-v019");
     if(!Response.ok) throw new Error("Character manifest failed to load.");
 
     this.Manifest = await Response.json();
 
     await Promise.all([
-      this.LoadOne("robber"),
+      this.LoadOne("robberUpper"),
+      this.LoadOne("robberLower"),
       this.LoadOne("police"),
       this.LoadOne("lootBag")
     ]);
@@ -302,48 +346,82 @@ export class CharacterAssets{
   }
 
   Create(Role){
-    const Key = Role === "Police" ? "police" : "robber";
-    const Source = this.Models.get(Key);
+    if(Role === "Police"){
+      const Source = this.Models.get("police");
 
-    if(!Source?.Scene){
-      throw new Error("Required character model is unavailable: "+Key);
+      if(!Source?.Scene){
+        throw new Error("Required character model is unavailable: police");
+      }
+
+      const Model = SkeletonClone(Source.Scene);
+      RemoveUnwantedAccessories(Model);
+      StyleCharacter(Model,Role);
+      NormalizeCharacter(Model);
+
+      const HasGenericMovement = Boolean(
+        FindClip(Source.Animations,["Idle_Neutral","Idle","Stand"]) &&
+        FindClip(Source.Animations,["Walk","Walking"]) &&
+        FindClip(Source.Animations,["Run","Run_Shoot","Running"])
+      );
+
+      return {
+        Model,
+        Animator:HasGenericMovement
+          ? new ClipAnimator(Model,Source.Animations)
+          : new BoneAnimator(Model),
+        RightHand:FindBone(Model,[/righthand/,/rightwrist/,/wristr/,/handr/]),
+        BagAnchor:null,
+        FacingOffset:0
+      };
     }
 
-    const Model = SkeletonClone(Source.Scene);
+    const UpperSource = this.Models.get("robberUpper");
+    const LowerSource = this.Models.get("robberLower");
 
-    RemoveUnwantedAccessories(Model);
-    StyleCharacter(Model,Role);
-    NormalizeCharacter(Model);
+    if(!UpperSource?.Scene || !LowerSource?.Scene){
+      throw new Error("Required modular robber models are unavailable.");
+    }
 
-    const RightHand = FindBone(Model,[
-      /righthand/,
-      /rightwrist/,
-      /wristr/,
-      /handr/
-    ]);
+    const Upper = SkeletonClone(UpperSource.Scene);
+    const Lower = SkeletonClone(LowerSource.Scene);
 
-    const HasGenericMovement = Boolean(
-      FindClip(Source.Animations,["Idle_Neutral","Idle","Stand"]) &&
-      FindClip(Source.Animations,["Walk","Walking"]) &&
-      FindClip(Source.Animations,["Run","Run_Shoot","Running"])
+    RemoveUnwantedAccessories(Upper);
+    RemoveUnwantedAccessories(Lower);
+    StyleCharacter(Upper,"Robber");
+    StyleCharacter(Lower,"Robber");
+    NormalizeCharacter(Upper);
+    NormalizeCharacter(Lower);
+    TrimCompositePart(Upper,true);
+    TrimCompositePart(Lower,false);
+
+    const Model = new THREE.Group();
+    Model.name = "ModernRobberComposite";
+    Model.add(Upper);
+    Model.add(Lower);
+
+    const UpperHasMovement = Boolean(
+      FindClip(UpperSource.Animations,["Idle_Neutral","Idle","Stand"]) &&
+      FindClip(UpperSource.Animations,["Walk","Walking"]) &&
+      FindClip(UpperSource.Animations,["Run","Run_Shoot","Running"])
+    );
+    const LowerHasMovement = Boolean(
+      FindClip(LowerSource.Animations,["Idle_Neutral","Idle","Stand"]) &&
+      FindClip(LowerSource.Animations,["Walk","Walking"]) &&
+      FindClip(LowerSource.Animations,["Run","Run_Shoot","Running"])
     );
 
-    const BagAnchor = FindBone(Model,[
-      /hips$/,
-      /pelvis$/,
-      /spine$/,
-      /abdomen/,
-      /torso/,
-      /chest/
-    ]);
+    const UpperAnimator = UpperHasMovement
+      ? new ClipAnimator(Upper,UpperSource.Animations)
+      : new BoneAnimator(Upper);
+    const LowerAnimator = LowerHasMovement
+      ? new ClipAnimator(Lower,LowerSource.Animations)
+      : new BoneAnimator(Lower);
 
     return {
       Model,
-      Animator:HasGenericMovement
-        ? new ClipAnimator(Model,Source.Animations)
-        : new BoneAnimator(Model),
-      RightHand,
-      BagAnchor,
+      Animator:new CompositeAnimator([UpperAnimator,LowerAnimator]),
+      RightHand:FindBone(Upper,[/righthand/,/rightwrist/,/wristr/,/handr/]),
+      BagAnchor:null,
       FacingOffset:0
     };
   }

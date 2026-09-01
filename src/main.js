@@ -1,15 +1,15 @@
 import * as THREE from "three";
-import {GameConfig} from "./config.js?v=20260831-v018";
-import {CollisionWorld} from "./collision.js?v=20260831-v018";
-import {CharacterAssets} from "./assets.js?v=20260831-v018";
-import {BankWorld} from "./world.js?v=20260831-v018";
-import {PlayerController} from "./player.js?v=20260831-v018";
-import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260831-v018";
-import {PerformanceManager} from "./performance.js?v=20260831-v018";
+import {GameConfig} from "./config.js?v=20260831-v019";
+import {CollisionWorld} from "./collision.js?v=20260831-v019";
+import {CharacterAssets} from "./assets.js?v=20260831-v019";
+import {BankWorld} from "./world.js?v=20260831-v019";
+import {PlayerController} from "./player.js?v=20260831-v019";
+import {VaultSystem,GearSystem,LootSystem,PoliceSystem,GameUi} from "./systems.js?v=20260831-v019";
+import {PerformanceManager} from "./performance.js?v=20260831-v019";
 
 const Canvas = document.getElementById("GameCanvas");
 const FpsCounter = document.getElementById("FpsCounter");
-const Renderer = new THREE.WebGLRenderer({canvas:Canvas,antialias:true,powerPreference:"high-performance"});
+const Renderer = new THREE.WebGLRenderer({canvas:Canvas,antialias:false,powerPreference:"high-performance"});
 Renderer.setPixelRatio(1);
 Renderer.setSize(innerWidth,innerHeight,false);
 Renderer.shadowMap.enabled = false;

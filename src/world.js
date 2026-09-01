@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {PropLibrary} from "./prop-assets.js?v=20260831-v017";
+import {PropLibrary} from "./prop-assets.js?v=20260831-v019";
 
 export class BankWorld{
   constructor(Scene,Collision){
@@ -26,36 +26,16 @@ export class BankWorld{
     this.Scene.background = new THREE.Color(0x111820);
     this.Scene.fog = new THREE.FogExp2(0x111820,0.0075);
 
-    const Ambient = new THREE.AmbientLight(0xffffff,0.72);
+    const Ambient = new THREE.AmbientLight(0xffffff,1.02);
     this.Scene.add(Ambient);
 
-    const Sky = new THREE.HemisphereLight(0xd9e8f7,0x33383f,1.65);
+    const Sky = new THREE.HemisphereLight(0xe1e8ef,0x3b4046,1.25);
     this.Scene.add(Sky);
 
-    const Moon = new THREE.DirectionalLight(0xd7e4ff,1.75);
-    Moon.position.set(-12,20,15);
+    const Moon = new THREE.DirectionalLight(0xdfe8f2,1.18);
+    Moon.position.set(-10,18,12);
     Moon.castShadow = false;
     this.Scene.add(Moon);
-
-    for(const X of [-8,-4,0,4,8]){
-      const LobbyLight = new THREE.PointLight(0xffe0b0,1.55,10,2);
-      LobbyLight.position.set(X,2.45,4);
-      this.Scene.add(LobbyLight);
-    }
-
-    for(const X of [-7,0,7]){
-      const VaultLight = new THREE.PointLight(0xc9ddff,1.3,9,2);
-      VaultLight.position.set(X,2.4,-7);
-      this.Scene.add(VaultLight);
-    }
-
-    const GearLight = new THREE.PointLight(0x5dd6ff,1.15,5,2);
-    GearLight.position.set(this.GearPosition.x,1.4,this.GearPosition.z);
-    this.Scene.add(GearLight);
-
-    const EscapeLight = new THREE.PointLight(0x70ffc8,0.9,5,2);
-    EscapeLight.position.set(this.EscapePosition.x,1.6,this.EscapePosition.z);
-    this.Scene.add(EscapeLight);
   }
 
   AddProp(Key,Options={}){

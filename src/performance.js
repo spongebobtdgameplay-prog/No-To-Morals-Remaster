@@ -48,7 +48,7 @@ export class PerformanceManager{
   }
 
   RefreshSceneBudget(){
-    const MaxAnisotropy = Math.min(4,this.Renderer.capabilities.getMaxAnisotropy());
+    const MaxAnisotropy = Math.min(2,this.Renderer.capabilities.getMaxAnisotropy());
 
     this.Scene.traverse(Object=>{
       if(Object.isLight) Object.castShadow = false;
@@ -138,9 +138,12 @@ export class PerformanceManager{
 
     if(this.Counter && Now-this.LastPaint > 350){
       this.LastPaint = Now;
+      const Calls = Number(this.Renderer.info.render.calls) || 0;
+      const Triangles = Number(this.Renderer.info.render.triangles) || 0;
       this.Counter.innerHTML =
         "<span>FPS</span><strong>"+Math.round(Fps)+"</strong>"+
-        "<small>"+Average.toFixed(1)+" ms · "+this.PixelRatio.toFixed(2)+"×</small>";
+        "<small>"+Average.toFixed(1)+" ms · "+this.PixelRatio.toFixed(2)+"× · "+
+        Calls+" calls · "+Math.round(Triangles/1000)+"k tris</small>";
     }
   }
 }
